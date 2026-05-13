@@ -653,12 +653,50 @@ function renderStage5() {
     .attr("fill", "currentColor").attr("text-anchor", "middle").style("font-size", "12px")
     .text("Total fire radiative power (MW, log scale)");
 
-  // Pre-jitter once per row so brushing/region filtering is stable
+  // Visual annotation: highlight the "no prior lightning" zone (X near 0)
+  // so the ~88% column reads as a population, not a 1-pixel artifact.
+  const noLightZoneRight = x(5);
+  svg.append("g").attr("class", "annotation").lower()
+    .call(g => {
+      g.append("rect")
+        .attr("x", x(0)).attr("y", M.top)
+        .attr("width", noLightZoneRight - x(0))
+        .attr("height", H - M.bottom - M.top)
+        .attr("fill", "#b8453a").attr("fill-opacity", 0.06);
+      g.append("line")
+        .attr("x1", noLightZoneRight).attr("x2", noLightZoneRight)
+        .attr("y1", M.top).attr("y2", H - M.bottom)
+        .attr("stroke", "#b8453a").attr("stroke-opacity", 0.35)
+        .attr("stroke-dasharray", "3 3");
+      g.append("text")
+        .attr("x", (x(0) + noLightZoneRight) / 2)
+        .attr("y", M.top + 14)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#b8453a").attr("opacity", 0.85)
+        .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
+        .style("font-size", "10px")
+        .style("text-transform", "uppercase")
+        .style("letter-spacing", "1.2px")
+        .text("no prior lightning");
+      g.append("text")
+        .attr("x", noLightZoneRight + 8)
+        .attr("y", M.top + 14)
+        .attr("fill", "#6b6b6b").attr("opacity", 0.85)
+        .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
+        .style("font-size", "10px")
+        .style("text-transform", "uppercase")
+        .style("letter-spacing", "1.2px")
+        .text("→ prior lightning");
+    });
+
+  // Pre-jitter once per row so brushing/region filtering is stable.
+  // X=0 cells get a wide one-sided jitter (0–4 X units) so the ~88% majority
+  // is visually obvious as a thick column on the left, not a 1-pixel stripe.
   const data0 = joined
     .filter(d => d.power > 0)
     .map(d => ({
       ...d,
-      _x: d.priorLightning + (d.priorLightning === 0 ? (Math.random() - 0.5) * 0.6 : 0),
+      _x: d.priorLightning + (d.priorLightning < 5 ? Math.random() * 4 : 0),
     }));
 
   const dotsLayer = svg.append("g");
