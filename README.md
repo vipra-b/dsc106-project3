@@ -17,7 +17,7 @@ Both products are public on AWS Open Data (`s3://noaa-goes16/`).
 ## Layout
 
 ```
-web/                Static viz (deploy this to Pages)
+docs/                Static viz (deploy this to Pages)
 data/               Source parquets + intermediate CSVs
 *.py                Reproducible extractors / aggregators
 ```
@@ -25,7 +25,7 @@ data/               Source parquets + intermediate CSVs
 ## Local preview
 
 ```sh
-cd web && python3 -m http.server 8765
+cd docs && python3 -m http.server 8765
 # then open http://localhost:8765/
 ```
 
