@@ -274,7 +274,7 @@ function paintStateBase(svg, path) {
     .data(stateFC.features).enter()
     .append("path").attr("class", "state-fill").attr("d", path)
     .attr("fill", "#fbfaf7")
-    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.1);
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.8);
 }
 
 // ============================================================
@@ -403,7 +403,7 @@ function renderStage3() {
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
     .attr("fill", noDataColor)
-    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.1)
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.8)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: false });
@@ -439,7 +439,7 @@ function renderStage4() {
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
     .attr("fill", noDataColor)
-    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.1)
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.8)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: true });
@@ -494,16 +494,16 @@ function bindStateInteractions(paths, tip, { showLightning }) {
         .html(`<strong>${s.name}</strong><br>
                Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "none"}<br>
                ${lightLine}<em>click to see timeline</em>`);
-      paths.attr("stroke-width", x => x.id === d.id ? 2.5 : 1.1)
+      paths.attr("stroke-width", x => x.id === d.id ? 3.2 : 1.8)
            .attr("stroke", x => x.id === d.id ? "#b8453a" : "#1f1f1f");
     })
     .on("mouseleave", function() {
       tip.style("display", "none");
-      paths.attr("stroke-width", 1.1).attr("stroke", "#1f1f1f");
+      paths.attr("stroke-width", 1.8).attr("stroke", "#1f1f1f");
     })
     .on("click", function(event, d) {
       renderStatePanel(d.id, stateTotals.get(d.id), { showLightning });
-      paths.attr("stroke-width", x => x.id === d.id ? 2.5 : 1.1)
+      paths.attr("stroke-width", x => x.id === d.id ? 3.2 : 1.8)
            .attr("stroke", x => x.id === d.id ? "#b8453a" : "#1f1f1f");
     });
 }
