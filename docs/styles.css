@@ -200,8 +200,8 @@ header h1 {
 /* ---------- Viz / map area (stays dark) ---------- */
 .viz-area {
   display: grid;
-  grid-template-columns: 1fr 230px;
-  gap: 16px;
+  grid-template-columns: 1fr 190px;
+  gap: 14px;
   align-items: start;
   position: relative;
   transition: grid-template-columns 0.55s ease;
@@ -214,9 +214,9 @@ header h1 {
   background: #1a1a20;
   border: 1px solid #2c2c33;
   border-radius: 4px;
-  padding: 14px;
-  min-height: 480px;
-  font-size: 12.5px;
+  padding: 10px 11px;
+  min-height: 420px;
+  font-size: 11.5px;
   font-family: Georgia, serif;
   color: var(--text);
   opacity: 1;
@@ -237,46 +237,48 @@ header h1 {
 }
 .state-panel-placeholder {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-style: italic;
   text-align: center;
-  margin-top: 60px;
+  margin-top: 50px;
+  line-height: 1.5;
+  padding: 0 6px;
 }
 .state-panel h3 {
-  margin: 0 0 4px;
-  font-size: 18px;
+  margin: 0 0 3px;
+  font-size: 15px;
   font-family: Georgia, serif;
   font-weight: 700;
   color: var(--text);
 }
 .state-panel .panel-sub {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 10px;
+  font-size: 9.5px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--muted);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .state-panel .stat-row {
   display: flex;
   justify-content: space-between;
-  margin: 5px 0;
-  font-size: 13px;
+  margin: 3px 0;
+  font-size: 11.5px;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 .state-panel .stat-row .stat-label { color: var(--muted); }
 .state-panel .stat-row .stat-val { font-weight: 600; }
 .state-panel .stat-row .stat-val.fire { color: var(--fire); }
 .state-panel .stat-row .stat-val.light { color: var(--light); }
-.state-panel .panel-chart { margin-top: 14px; }
+.state-panel .panel-chart { margin-top: 10px; }
 .state-panel .panel-verdict {
-  margin-top: 14px;
-  padding: 10px 12px;
+  margin-top: 10px;
+  padding: 7px 9px;
   background: rgba(76, 194, 255, 0.07);
   border-left: 2px solid var(--accent-cyan);
   font-family: Georgia, serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.45;
   font-style: italic;
 }
 .state-panel .panel-verdict strong {
