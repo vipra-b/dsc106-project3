@@ -591,19 +591,33 @@ function renderStatePanel(stateId, totals, { showLightning }) {
 // ============================================================
 function stage5Controls() {
   return `
-    <div class="headline" style="margin-right:24px">
-      <span id="headline-num">0%</span>
-      <span class="headline-text">of <span id="headline-scope">all fire cells</span> had <strong>no</strong> prior-day lightning</span>
+    <div class="headline-block">
+      <div class="headline-scope-line">
+        In <span id="headline-scope">all fire cells</span>:
+      </div>
+      <div class="headline-stats">
+        <div class="hstat" id="hstat-no-block">
+          <span class="hstat-num" id="hstat-no">0</span>
+          <span class="hstat-pct" id="hstat-no-pct">0%</span>
+          <span class="hstat-label">no prior-day lightning</span>
+        </div>
+        <div class="hstat-sep">·</div>
+        <div class="hstat" id="hstat-yes-block">
+          <span class="hstat-num" id="hstat-yes">0</span>
+          <span class="hstat-pct" id="hstat-yes-pct">0%</span>
+          <span class="hstat-label">had prior lightning</span>
+        </div>
+      </div>
     </div>
-    <div>
-      <strong style="margin-right:6px">Filter region:</strong>
+    <div class="region-row">
+      <strong>Filter region:</strong>
       <button data-region="All" class="region-btn active">All</button>
       <button data-region="West" class="region-btn">West</button>
       <button data-region="Mountain/Plains" class="region-btn">Mountain/Plains</button>
       <button data-region="South-Central" class="region-btn">South-Central</button>
       <button data-region="East" class="region-btn">East</button>
     </div>
-    <div id="selection-info" style="flex-basis:100%; font-size:12px; color:var(--muted); font-style:italic;">
+    <div id="selection-info">
       Drag any rectangle on the chart to focus on a subset.
     </div>
   `;
@@ -675,16 +689,32 @@ function renderStage5() {
 
     const matched = data0.filter(dotMatches);
     const noL = matched.filter(d => d.priorLightning < 5).length;
-    const pct = matched.length ? Math.round(100 * noL / matched.length) : 0;
+    const withL = matched.length - noL;
+    const pctNo = matched.length ? Math.round(100 * noL / matched.length) : 0;
+    const pctYes = matched.length ? 100 - pctNo : 0;
 
-    const hn = document.getElementById("headline-num");
-    if (hn) hn.textContent = `${pct}%`;
     const hs = document.getElementById("headline-scope");
     if (hs) {
       const regionWord = activeRegion === "All" ? "fire cells" : `${activeRegion} fire cells`;
       hs.textContent = brushSel
         ? `${matched.length.toLocaleString()} selected ${regionWord}`
         : `all ${matched.length.toLocaleString()} ${regionWord}`;
+    }
+    // Both counts always shown
+    const hno = document.getElementById("hstat-no");
+    const hnoP = document.getElementById("hstat-no-pct");
+    const hyes = document.getElementById("hstat-yes");
+    const hyesP = document.getElementById("hstat-yes-pct");
+    if (hno) hno.textContent = noL.toLocaleString();
+    if (hnoP) hnoP.textContent = `${pctNo}%`;
+    if (hyes) hyes.textContent = withL.toLocaleString();
+    if (hyesP) hyesP.textContent = `${pctYes}%`;
+    // Bold the dominant side
+    const noBlock = document.getElementById("hstat-no-block");
+    const yesBlock = document.getElementById("hstat-yes-block");
+    if (noBlock && yesBlock) {
+      noBlock.classList.toggle("dominant", noL >= withL);
+      yesBlock.classList.toggle("dominant", withL > noL);
     }
     const info = document.getElementById("selection-info");
     if (info) {
