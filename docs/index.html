@@ -18,39 +18,71 @@
       <strong>Draft notice.</strong> Fire pixels are real GOES-16 ABI-L2-FDCC detections (1 snapshot/day, 20:00 UTC,
       binned to 0.5&deg; cells). Lightning is mock data with realistic CONUS climatology while the real GLM extract finishes.
     </p>
+    <p class="scroll-hint">↓ scroll to walk through the story</p>
   </header>
 
-  <section class="narrative" id="narrative">
-    <div class="stage-bar">
-      <div class="stage-progress">
-        Stage <span id="stage-num">1</span> &nbsp;of&nbsp; <span id="stage-total">5</span>
-      </div>
-      <div class="stage-dots" id="stage-dots"></div>
-    </div>
-
-    <h2 id="stage-title">Where America burned in 2024</h2>
-    <p class="subtitle" id="stage-caption">
-      Each circle is a 0.5&deg; cell where GOES-16 detected fire that week.
-      Drag the slider to scrub through the season.
-    </p>
-
-    <div class="viz-area">
-      <div id="main-viz" class="map"></div>
-      <aside id="state-panel" class="state-panel hidden">
-        <div class="state-panel-placeholder">
-          Click any state on the map to see its fire and lightning timeline.
+  <section class="scrolly">
+    <div class="scrolly-graphic">
+      <div class="graphic-inner">
+        <div class="stage-progress-bar">
+          <div class="stage-dots" id="stage-dots"></div>
         </div>
-      </aside>
+        <div class="viz-area">
+          <div id="main-viz" class="map"></div>
+          <aside id="state-panel" class="state-panel hidden">
+            <div class="state-panel-placeholder">
+              Click any state on the map to see its fire and lightning timeline.
+            </div>
+          </aside>
+        </div>
+        <div id="stage-controls" class="stage-controls"></div>
+      </div>
     </div>
 
-    <div id="stage-controls" class="stage-controls">
-      <!-- populated per stage by JS -->
-    </div>
-
-    <div class="nav">
-      <button id="prev-btn" class="nav-btn" disabled>← Previous</button>
-      <div id="nav-hint" class="nav-hint"></div>
-      <button id="next-btn" class="nav-btn">Next →</button>
+    <div class="scrolly-text">
+      <div class="step" data-stage="1">
+        <h2>Where America burned in 2024, week by week</h2>
+        <p>
+          Each circle is a 0.5° cell where GOES-16 detected fire activity in a given week.
+          The slider walks through every week from June through October — drag it to see how
+          the fire footprint moves across the country.
+        </p>
+      </div>
+      <div class="step" data-stage="2">
+        <h2>The full 2024 fire season, accumulated</h2>
+        <p>
+          Now all those weeks pile up onto one map. The shape of the season emerges — the
+          Sierra Nevada, the Mountain West, the Mexican border, a long Mississippi-Valley
+          corridor of agricultural burning. The Northeast and Upper Midwest barely register.
+        </p>
+      </div>
+      <div class="step" data-stage="3">
+        <h2>Aggregate to the state level</h2>
+        <p>
+          The dots dissolve. Each state lights up by its total fire radiative power for the
+          season. Now the geography is impossible to miss: a Western band of intense red,
+          a Texas-to-Florida corridor of moderate orange, and the rest of the country quiet.
+        </p>
+      </div>
+      <div class="step" data-stage="4">
+        <h2>Now overlay the lightning</h2>
+        <p>
+          Toggle <strong>"Overlay lightning data"</strong> below the map. The coloring switches
+          to bivariate — fire activity on the vertical axis, lightning on the horizontal.
+          The myth-buster reveals itself: the bright-red Western states are <em>not</em> the
+          high-lightning states. Florida and the Gulf get the most lightning but barely burn.
+          Click any state to see its weekly breakdown.
+        </p>
+      </div>
+      <div class="step" data-stage="5">
+        <h2>The verdict in one chart</h2>
+        <p>
+          One dot per fire-cell-week. The X-axis is "lightning flashes within 24 hours before
+          this fire was detected." If lightning caused fires, the dots would climb a diagonal.
+          They don't. The headline number updates as you brush or filter by region — the
+          majority of fire cells have <em>no preceding lightning</em>, no matter how you slice it.
+        </p>
+      </div>
     </div>
   </section>
 
@@ -58,7 +90,7 @@
 
   <footer>
     <p>
-      Data: GOES-16 ABI-L2-FDCC (fires) and GOES-16 GLM-L2-LCFA (lightning), aggregated to 0.5&deg; cells and weekly bins.
+      Data: GOES-16 ABI-L2-FDCC (fires) and GOES-16 GLM-L2-LCFA (lightning), aggregated to 0.5° cells and weekly bins.
       U.S. state outlines from <code>us-atlas</code>.
     </p>
   </footer>

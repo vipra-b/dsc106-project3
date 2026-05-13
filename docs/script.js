@@ -99,17 +99,39 @@ const STAGES = {
   precomputeStateData();
 
   buildStageDots();
-  document.getElementById("stage-total").textContent = TOTAL_STAGES;
-  document.getElementById("prev-btn").addEventListener("click", () => goToStage(currentStage - 1));
-  document.getElementById("next-btn").addEventListener("click", () => goToStage(currentStage + 1));
 
-  // Deep-link via URL hash: #stage=3
-  const initial = parseInt((location.hash.match(/stage=(\d+)/) || [])[1], 10) || 1;
-  goToStage(Math.max(1, Math.min(TOTAL_STAGES, initial)));
-  window.addEventListener("hashchange", () => {
-    const n = parseInt((location.hash.match(/stage=(\d+)/) || [])[1], 10) || 1;
-    if (n !== currentStage) goToStage(n);
+  // Scroll-triggered stage changes via IntersectionObserver
+  const steps = document.querySelectorAll(".step");
+  const observer = new IntersectionObserver((entries) => {
+    // Prefer the step closest to top with highest intersection ratio
+    let best = null, bestScore = -1;
+    for (const e of entries) {
+      if (e.isIntersecting && e.intersectionRatio > bestScore) {
+        best = e.target;
+        bestScore = e.intersectionRatio;
+      }
+    }
+    if (best) {
+      const n = +best.dataset.stage;
+      // Mark active step
+      steps.forEach(s => s.classList.toggle("active", s === best));
+      if (n !== currentStage) goToStage(n);
+    }
+  }, {
+    threshold: [0.25, 0.5, 0.75],
+    rootMargin: "-30% 0px -30% 0px", // step must be near vertical center
   });
+  steps.forEach(s => observer.observe(s));
+
+  // Stage-dot clicks scroll to the corresponding step
+  d3.selectAll(".stage-dots .dot").on("click", function() {
+    const n = +this.dataset.stage;
+    const step = document.querySelector(`.step[data-stage="${n}"]`);
+    if (step) step.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  // Initial paint of stage 1
+  goToStage(1);
 })();
 
 function buildStageDots() {
@@ -126,21 +148,10 @@ function goToStage(n) {
   if (n < 1 || n > TOTAL_STAGES) return;
   currentStage = n;
   const cfg = STAGES[n];
-  document.getElementById("stage-num").textContent = n;
-  document.getElementById("stage-title").textContent = cfg.title;
-  document.getElementById("stage-caption").textContent = cfg.caption;
-  document.getElementById("nav-hint").textContent = cfg.nextHint;
-  document.getElementById("prev-btn").disabled = (n === 1);
-  document.getElementById("next-btn").disabled = (n === TOTAL_STAGES);
 
   d3.selectAll(".stage-dots .dot").classed("active", function() {
     return +this.dataset.stage === n;
   });
-  // Sync URL hash without re-triggering goToStage
-  const newHash = `#stage=${n}`;
-  if (location.hash !== newHash) {
-    history.replaceState(null, "", newHash);
-  }
 
   const vizArea = document.querySelector(".viz-area");
   const panel = document.getElementById("state-panel");
@@ -151,9 +162,10 @@ function goToStage(n) {
     vizArea.classList.add("fullwidth");
     panel.classList.add("hidden");
   }
-
-  // Reset panel content
-  panel.innerHTML = `<div class="state-panel-placeholder">Click any state on the map to see its weekly fire ${n === 4 ? "and lightning " : ""}timeline.</div>`;
+  // Reset panel content for stages that show it
+  if (cfg.showPanel) {
+    panel.innerHTML = `<div class="state-panel-placeholder">Click any state to see its weekly fire ${n === 4 ? "and lightning " : ""}timeline.</div>`;
+  }
 
   document.getElementById("stage-controls").innerHTML = cfg.controls();
   cfg.render();
@@ -325,6 +337,7 @@ function renderStage2() {
     c.maxPower = Math.max(c.maxPower, d.maxPower);
     c.weeks += 1;
   }
+  // Sort by week order (chronological appearance) so transition feels like accumulation
   const cells = [...cellMap.values()];
 
   const sizeScale = d3.scaleSqrt().domain([1, d3.max(cells, d => d.power) || 1]).range([2, 18]);
@@ -333,10 +346,10 @@ function renderStage2() {
   svg.append("g").selectAll("circle").data(cells).enter()
     .append("circle")
     .attr("cx", d => d._x).attr("cy", d => d._y)
-    .attr("r", d => sizeScale(d.power))
     .attr("fill", d => colorScale(d.maxPower))
-    .attr("fill-opacity", 0.65)
     .attr("stroke", "#fff").attr("stroke-opacity", 0.2)
+    .attr("r", 0)              // start small
+    .attr("fill-opacity", 0)   // start invisible
     .on("mousemove", function(event, d) {
       tip.style("display", "block")
         .style("left", (event.pageX + 14) + "px")
@@ -345,7 +358,12 @@ function renderStage2() {
                ${d.fires} detections across ${d.weeks} weeks<br>
                Total power: ${d.power.toLocaleString(undefined, {maximumFractionDigits:0})} MW`);
     })
-    .on("mouseleave", () => tip.style("display", "none"));
+    .on("mouseleave", () => tip.style("display", "none"))
+    .transition()
+    .delay((d, i) => Math.min(i, 200) * 4)   // stagger up to ~800ms
+    .duration(500)
+    .attr("r", d => sizeScale(d.power))
+    .attr("fill-opacity", 0.65);
 }
 
 // ============================================================
@@ -358,18 +376,25 @@ function renderStage3() {
 
   const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
   const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
+  const noDataColor = "#3a3a42";  // visible "no data" gray
 
   const statePaths = svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
-    .attr("fill", d => {
-      const s = stateTotals.get(d.id);
-      return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : "#1c1c22";
-    })
+    .attr("fill", noDataColor)
     .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: false });
+
+  // Fade-in fire colors over the state polygons
+  statePaths.transition()
+    .delay((d, i) => i * 12)
+    .duration(600)
+    .attr("fill", d => {
+      const s = stateTotals.get(d.id);
+      return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : noDataColor;
+    });
 }
 
 // ============================================================
@@ -393,12 +418,13 @@ function renderStage4() {
 
   const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
   const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
+  const noDataColor = "#3a3a42";
 
   function fireOnly(s) {
-    return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : "#1c1c22";
+    return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : noDataColor;
   }
   function bivariate(s) {
-    if (s.fire === 0 && s.light === 0) return "#1c1c22";
+    if (s.fire === 0 && s.light === 0) return noDataColor;
     return BIVARIATE[binFire(s.fire)][binLight(s.light)];
   }
 
@@ -415,10 +441,13 @@ function renderStage4() {
   const legendG = svg.append("g").attr("class", "legend-group");
   function updateMode() {
     const on = toggle.checked;
-    statePaths.transition().duration(450)
+    statePaths.transition().duration(700)
       .attr("fill", d => on ? bivariate(stateTotals.get(d.id)) : fireOnly(stateTotals.get(d.id)));
     legendG.selectAll("*").remove();
-    if (on) drawBivLegend(legendG);
+    if (on) {
+      const l = drawBivLegend(legendG);
+      l.style("opacity", 0).transition().delay(400).duration(400).style("opacity", 1);
+    }
     bindStateInteractions(statePaths, tip, { showLightning: on });
   }
   toggle.addEventListener("change", updateMode);
@@ -448,6 +477,7 @@ function drawBivLegend(g) {
         .attr("stroke", "#0f0f12").attr("stroke-width", 1);
     }
   }
+  return g;
 }
 
 function bindStateInteractions(paths, tip, { showLightning }) {
