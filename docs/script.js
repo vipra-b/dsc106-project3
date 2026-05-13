@@ -10,10 +10,15 @@ let stateTotals, fireBreaks, lightBreaks;
 let firePerWeekState, lightPerWeekState, priorPerWeekState, fireCountPerWeekState;
 let stateFC;
 
+// Bivariate palette tuned for cream/light background.
+// Rows = fire (low/mid/high), Cols = lightning (low/mid/high).
+// Corners encode the myth-bust:
+//   high-fire / low-lightning = red    (Western states)
+//   low-fire / high-lightning = teal   (Florida / Gulf)
 const BIVARIATE = [
-  ["#e8e8e8", "#b3d4e4", "#5ac8c8"], // fire low
-  ["#e4acac", "#a5add3", "#5698b9"], // fire mid
-  ["#c85a5a", "#985dc8", "#574caf"], // fire high
+  ["#d8d4c5", "#a8c4cf", "#3f97a5"], // fire low
+  ["#cfa39c", "#9c9aa7", "#3f7080"], // fire mid
+  ["#b8453a", "#7a3a5e", "#2c2e58"], // fire high
 ];
 
 const STAGES = {
@@ -268,8 +273,8 @@ function paintStateBase(svg, path) {
   return svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
     .append("path").attr("class", "state-fill").attr("d", path)
-    .attr("fill", "#1c1c22")
-    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6);
+    .attr("fill", "#e3dfd2")
+    .attr("stroke", "#b8b2a4").attr("stroke-width", 0.6);
 }
 
 // ============================================================
@@ -308,7 +313,7 @@ function renderStage1() {
     const wkData = projFires.filter(d => d.week === w);
     const sel = layer.selectAll("circle").data(wkData, d => `${d.lat},${d.lon}`);
     sel.enter().append("circle")
-      .attr("stroke", "#fff").attr("stroke-opacity", 0.25)
+      .attr("stroke", "#1a1a1a").attr("stroke-opacity", 0.35)
       .on("mousemove", function(event, d) {
         tip.style("display", "block")
           .style("left", (event.pageX + 14) + "px")
@@ -363,7 +368,7 @@ function renderStage2() {
     .append("circle")
     .attr("cx", d => d._x).attr("cy", d => d._y)
     .attr("fill", d => colorScale(d.maxPower))
-    .attr("stroke", "#fff").attr("stroke-opacity", 0.2)
+    .attr("stroke", "#1a1a1a").attr("stroke-opacity", 0.3)
     .attr("r", 0)              // start small
     .attr("fill-opacity", 0)   // start invisible
     .on("mousemove", function(event, d) {
@@ -392,13 +397,13 @@ function renderStage3() {
 
   const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
   const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
-  const noDataColor = "#3a3a42";  // visible "no data" gray
+  const noDataColor = "#d5cfbf";  // visible "no data" gray
 
   const statePaths = svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
     .attr("fill", noDataColor)
-    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
+    .attr("stroke", "#b8b2a4").attr("stroke-width", 0.6)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: false });
@@ -420,7 +425,7 @@ function renderStage4() {
   clearViz();
   const { svg, path } = buildMap(720, 460);
   const tip = d3.select("#tooltip");
-  const noDataColor = "#3a3a42";
+  const noDataColor = "#d5cfbf";
 
   function bivariate(s) {
     if (s.fire === 0 && s.light === 0) return noDataColor;
@@ -434,7 +439,7 @@ function renderStage4() {
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
     .attr("fill", noDataColor)
-    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
+    .attr("stroke", "#b8b2a4").attr("stroke-width", 0.6)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: true });
@@ -455,13 +460,13 @@ function drawBivLegend(g) {
   const left = 10, top = 340;
   g.append("rect").attr("x", left - 4).attr("y", top - 22)
     .attr("width", 140).attr("height", 110)
-    .attr("fill", "rgba(15,15,18,0.92)")
-    .attr("stroke", "#2c2c33");
-  g.append("text").attr("x", left + 30).attr("y", top - 6).attr("fill", "#9b9794")
+    .attr("fill", "rgba(251,250,247,0.96)")
+    .attr("stroke", "#b8b2a4");
+  g.append("text").attr("x", left + 30).attr("y", top - 6).attr("fill", "#6b6b6b")
     .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
     .text("Lightning →");
   g.append("text").attr("x", left + 8).attr("y", top + 50)
-    .attr("fill", "#9b9794").attr("transform", `rotate(-90, ${left + 8}, ${top + 50})`)
+    .attr("fill", "#6b6b6b").attr("transform", `rotate(-90, ${left + 8}, ${top + 50})`)
     .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
     .text("Fire →");
   for (let row = 0; row < 3; row++) {
@@ -470,7 +475,7 @@ function drawBivLegend(g) {
         .attr("x", left + 26 + col * size).attr("y", top + (2 - row) * size)
         .attr("width", size).attr("height", size)
         .attr("fill", BIVARIATE[row][col])
-        .attr("stroke", "#0f0f12").attr("stroke-width", 1);
+        .attr("stroke", "#fbfaf7").attr("stroke-width", 1);
     }
   }
   return g;
@@ -490,16 +495,16 @@ function bindStateInteractions(paths, tip, { showLightning }) {
                Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "—"}<br>
                ${lightLine}<em>click to see timeline</em>`);
       paths.attr("stroke-width", x => x.id === d.id ? 2 : 0.6)
-           .attr("stroke", x => x.id === d.id ? "#fff" : "#2c2c33");
+           .attr("stroke", x => x.id === d.id ? "#1a1a1a" : "#b8b2a4");
     })
     .on("mouseleave", function() {
       tip.style("display", "none");
-      paths.attr("stroke-width", 0.6).attr("stroke", "#2c2c33");
+      paths.attr("stroke-width", 0.6).attr("stroke", "#b8b2a4");
     })
     .on("click", function(event, d) {
       renderStatePanel(d.id, stateTotals.get(d.id), { showLightning });
       paths.attr("stroke-width", x => x.id === d.id ? 2.5 : 0.6)
-           .attr("stroke", x => x.id === d.id ? "#fff" : "#2c2c33");
+           .attr("stroke", x => x.id === d.id ? "#1a1a1a" : "#b8b2a4");
     });
 }
 
@@ -660,7 +665,7 @@ function renderStage5() {
     // Render ALL dots — highlight matches; dim non-matches (don't remove)
     const sel = dotsLayer.selectAll("circle").data(data0, d => `${d.week}-${d.lat}-${d.lon}`);
     sel.enter().append("circle")
-      .attr("r", 3.5).attr("stroke", "#0f0f12").attr("stroke-width", 0.3)
+      .attr("r", 3.5).attr("stroke", "#fbfaf7").attr("stroke-width", 0.3)
       .merge(sel)
       .attr("cx", d => x(d._x))
       .attr("cy", d => y(Math.max(d.power, 1)))
