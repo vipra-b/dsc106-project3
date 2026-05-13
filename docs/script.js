@@ -193,19 +193,26 @@ function goToStage(n) {
 }
 
 // ============================================================
+// State-membership lookup (point-in-polygon, cached).
+// Returns the state FIPS id for a (lon,lat), or null if outside all U.S.
+// state polygons. Used to drop fire/lightning cells that fall over Canada,
+// Mexico, or open water within the Albers USA projection extent.
+// ============================================================
+const stateCache = new Map();
+function findState(lon, lat) {
+  const k = `${lon.toFixed(2)},${lat.toFixed(2)}`;
+  if (stateCache.has(k)) return stateCache.get(k);
+  for (const f of stateFC.features) {
+    if (d3.geoContains(f, [lon, lat])) { stateCache.set(k, f.id); return f.id; }
+  }
+  stateCache.set(k, null);
+  return null;
+}
+
+// ============================================================
 // PRECOMPUTATION — state-level aggregates (used by stages 3+4)
 // ============================================================
 function precomputeStateData() {
-  const stateCache = new Map();
-  function findState(lon, lat) {
-    const k = `${lon.toFixed(2)},${lat.toFixed(2)}`;
-    if (stateCache.has(k)) return stateCache.get(k);
-    for (const f of stateFC.features) {
-      if (d3.geoContains(f, [lon, lat])) { stateCache.set(k, f.id); return f.id; }
-    }
-    stateCache.set(k, null);
-    return null;
-  }
 
   firePerWeekState = new Map();
   lightPerWeekState = new Map();
@@ -293,7 +300,10 @@ function renderStage1() {
   const layer = svg.append("g");
   const tip = d3.select("#tooltip");
 
+  // Filter to inside US state polygons only — drops Canadian/Mexican border
+  // cells that the Albers USA projection would otherwise place on the map.
   const projFires = fires.map(d => {
+    if (findState(d.lon, d.lat) === null) return null;
     const p = projection([d.lon, d.lat]);
     return p ? { ...d, _x: p[0], _y: p[1] } : null;
   }).filter(Boolean);
@@ -346,6 +356,7 @@ function renderStage2() {
 
   const cellMap = new Map();
   for (const d of fires) {
+    if (findState(d.lon, d.lat) === null) continue; // drop non-US cells
     const p = projection([d.lon, d.lat]);
     if (!p) continue;
     const key = `${d.lat},${d.lon}`;
