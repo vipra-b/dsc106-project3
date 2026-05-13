@@ -19,8 +19,8 @@
   /* Encoding colors */
   --fire: #c44424;            /* slightly darker red for legibility on cream */
   --light: #c79215;           /* mustard/amber instead of bright yellow */
-  --no-data: #e3dfd2;         /* light gray on cream */
-  --map-stroke: #b8b2a4;      /* state border on cream */
+  --no-data: #fbfaf7;         /* match page bg — states defined by outline only */
+  --map-stroke: #1f1f1f;      /* near-black state outlines, NYT-style */
   --map-text: #1a1a1a;
 }
 * { box-sizing: border-box; }
@@ -398,7 +398,7 @@ label { font-size: 12px; color: var(--ink-mute); }
 .headline-text { color: var(--ink-mute); font-size: 13px; }
 
 svg { display: block; }
-svg .state-fill { fill: var(--no-data); stroke: var(--map-stroke); stroke-width: 0.5px; }
+svg .state-fill { fill: var(--no-data); stroke: var(--map-stroke); stroke-width: 0.7px; }
 svg .axis path, svg .axis line { stroke: var(--rule); }
 svg .axis text { fill: var(--ink-mute); font-size: 11px; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
 svg .grid line { stroke: var(--rule); }

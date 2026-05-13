@@ -273,8 +273,8 @@ function paintStateBase(svg, path) {
   return svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
     .append("path").attr("class", "state-fill").attr("d", path)
-    .attr("fill", "#e3dfd2")
-    .attr("stroke", "#b8b2a4").attr("stroke-width", 0.6);
+    .attr("fill", "#fbfaf7")
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 0.7);
 }
 
 // ============================================================
@@ -397,13 +397,13 @@ function renderStage3() {
 
   const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
   const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
-  const noDataColor = "#d5cfbf";  // visible "no data" gray
+  const noDataColor = "#fbfaf7";  // visible "no data" gray
 
   const statePaths = svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
     .attr("fill", noDataColor)
-    .attr("stroke", "#b8b2a4").attr("stroke-width", 0.6)
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 0.7)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: false });
@@ -425,7 +425,7 @@ function renderStage4() {
   clearViz();
   const { svg, path } = buildMap(720, 460);
   const tip = d3.select("#tooltip");
-  const noDataColor = "#d5cfbf";
+  const noDataColor = "#fbfaf7";
 
   function bivariate(s) {
     if (s.fire === 0 && s.light === 0) return noDataColor;
@@ -439,7 +439,7 @@ function renderStage4() {
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
     .attr("fill", noDataColor)
-    .attr("stroke", "#b8b2a4").attr("stroke-width", 0.6)
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 0.7)
     .style("cursor", "pointer");
 
   bindStateInteractions(statePaths, tip, { showLightning: true });
@@ -461,7 +461,7 @@ function drawBivLegend(g) {
   g.append("rect").attr("x", left - 4).attr("y", top - 22)
     .attr("width", 140).attr("height", 110)
     .attr("fill", "rgba(251,250,247,0.96)")
-    .attr("stroke", "#b8b2a4");
+    .attr("stroke", "#1f1f1f");
   g.append("text").attr("x", left + 30).attr("y", top - 6).attr("fill", "#6b6b6b")
     .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
     .text("Lightning →");
@@ -494,17 +494,17 @@ function bindStateInteractions(paths, tip, { showLightning }) {
         .html(`<strong>${s.name}</strong><br>
                Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "none"}<br>
                ${lightLine}<em>click to see timeline</em>`);
-      paths.attr("stroke-width", x => x.id === d.id ? 2 : 0.6)
-           .attr("stroke", x => x.id === d.id ? "#1a1a1a" : "#b8b2a4");
+      paths.attr("stroke-width", x => x.id === d.id ? 2 : 0.7)
+           .attr("stroke", x => x.id === d.id ? "#b8453a" : "#1f1f1f");
     })
     .on("mouseleave", function() {
       tip.style("display", "none");
-      paths.attr("stroke-width", 0.6).attr("stroke", "#b8b2a4");
+      paths.attr("stroke-width", 0.7).attr("stroke", "#1f1f1f");
     })
     .on("click", function(event, d) {
       renderStatePanel(d.id, stateTotals.get(d.id), { showLightning });
-      paths.attr("stroke-width", x => x.id === d.id ? 2.5 : 0.6)
-           .attr("stroke", x => x.id === d.id ? "#1a1a1a" : "#b8b2a4");
+      paths.attr("stroke-width", x => x.id === d.id ? 2.5 : 0.7)
+           .attr("stroke", x => x.id === d.id ? "#b8453a" : "#1f1f1f");
     });
 }
 
