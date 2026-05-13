@@ -17,9 +17,11 @@
     </p>
     <p class="byline">By Vipra Bindal &nbsp;·&nbsp; DSC 106 Project 3</p>
     <p class="note">
-      Fire pixels are real GOES-16 ABI-L2-FDCC detections (one snapshot per day at 20:00 UTC,
-      binned to 0.5&deg; cells). Lightning is real GOES-16 GLM-L2-LCFA flash detections, sampled 2
-      files per hour and scaled by 90 to estimate full-cadence counts.
+      <strong>One quick definition.</strong> Throughout this story, a <em>"fire cell"</em>
+      is a 0.5&deg; square of land (roughly 50 km on a side, about the size of a U.S. county)
+      where the GOES-16 satellite detected at least one fire pixel during a given week.
+      Lightning is counted inside the same cells. Source: NOAA GOES-16 ABI-L2-FDCC (fires)
+      and GLM-L2-LCFA (lightning), 2024 fire season, public on AWS Open Data.
     </p>
     <p class="scroll-hint">↓ Scroll to follow the story</p>
   </header>
@@ -47,10 +49,12 @@
         <div class="step-label">1 / Week by week</div>
         <h2>Watch a fire season unfold</h2>
         <p>
-          Each circle is a 0.5° cell where GOES-16 detected fire activity in a single week.
-          Drag the slider to walk from June through October. The footprint moves with the calendar:
-          the Southwest in early summer, the Pacific Northwest by August, the Mississippi Valley
-          well into fall.
+          Each circle is a <strong>fire cell</strong>: a patch of land roughly 50 km on a side
+          (about county-sized) where the GOES-16 satellite detected fire activity during a
+          single week. Bigger circles mean more total radiative power inside that cell. Drag
+          the slider to walk from June through October. The footprint moves with the calendar:
+          the Southwest in early summer, the Pacific Northwest by August, the Mississippi
+          Valley well into fall.
         </p>
       </div>
       <div class="step" data-stage="2">
@@ -90,11 +94,11 @@
         <div class="step-label">5 / The verdict</div>
         <h2>Did the lightning actually come first?</h2>
         <p>
-          One dot per fire-cell-week. The X-axis is lightning flashes in the same cell within
-          the 24 hours <em>before</em> the fire was detected. If lightning caused fires, the
-          dots would climb a diagonal. They don't. Drag any rectangle to focus a subset. The
-          headline number tells you the share that had <em>no preceding lightning</em>. Whatever
-          slice you take, the majority did.
+          One dot per fire cell, per week it burned. The X-axis is the number of lightning
+          flashes in that same cell within the 24 hours <em>before</em> the fire was detected.
+          If lightning caused fires, the dots would climb a diagonal. They don't. Drag any
+          rectangle to focus a subset. The headline tells you how many had no preceding
+          lightning. Whatever slice you take, the majority did.
         </p>
       </div>
     </div>
