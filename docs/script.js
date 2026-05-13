@@ -624,7 +624,9 @@ function stage5Controls() {
 }
 function renderStage5() {
   clearViz();
-  const W = 900, H = 460, M = { top: 20, right: 24, bottom: 50, left: 60 };
+  // Match the map stages so the chart occupies the same visual area as the
+  // map and the layout doesn't shift between stages 4 and 5.
+  const W = 900, H = 540, M = { top: 20, right: 24, bottom: 60, left: 60 };
   const svg = d3.select("#main-viz").append("svg")
     .attr("viewBox", `0 0 ${W} ${H}`)
     .attr("preserveAspectRatio", "xMidYMid meet")

@@ -118,7 +118,9 @@ header h1 {
   top: 0;
   height: 100vh;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6vh 0;
 }
 .graphic-inner {
   width: 100%;
