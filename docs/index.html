@@ -8,18 +8,20 @@
 </head>
 <body>
   <header>
+    <div class="kicker">A Visual Investigation</div>
     <h1>Lightning Doesn't Light Most U.S. Wildfires</h1>
     <p class="lede">
       Folk belief blames lightning for wildfires. NOAA and the USDA say roughly
-      <strong>85%</strong> are human-caused. Here is what GOES-16 satellite data
-      (June&ndash;October 2024) shows about where lightning struck and where the country burned.
+      <strong>85 percent</strong> are human-caused. Here is what GOES-16 satellite data
+      from the 2024 fire season shows about where lightning struck and where the country burned.
     </p>
+    <p class="byline">By Vipra Bindal &nbsp;·&nbsp; DSC 106 Project 3</p>
     <p class="note">
-      <strong>Data.</strong> Fire pixels are real GOES-16 ABI-L2-FDCC detections (1 snapshot/day at 20:00 UTC,
-      binned to 0.5&deg; cells). Lightning is real GOES-16 GLM-L2-LCFA flash detections, sampled 2 files per hour
-      and scaled by 90 to estimate full-cadence counts.
+      Fire pixels are real GOES-16 ABI-L2-FDCC detections (one snapshot per day at 20:00 UTC,
+      binned to 0.5&deg; cells). Lightning is real GOES-16 GLM-L2-LCFA flash detections, sampled 2
+      files per hour and scaled by 90 to estimate full-cadence counts.
     </p>
-    <p class="scroll-hint">↓ scroll to walk through the story</p>
+    <p class="scroll-hint">↓ Scroll to follow the story</p>
   </header>
 
   <section class="scrolly">
@@ -42,46 +44,50 @@
 
     <div class="scrolly-text">
       <div class="step" data-stage="1">
-        <h2>Where America burned in 2024, week by week</h2>
+        <div class="step-label">Part 1 · Where</div>
+        <h2>Where America burned, week by week</h2>
         <p>
-          Each circle is a 0.5° cell where GOES-16 detected fire activity in a given week.
+          Each circle is a 0.5° cell where GOES-16 detected fire activity in a single week.
           The slider walks through every week from June through October — drag it to see how
           the fire footprint moves across the country.
         </p>
       </div>
       <div class="step" data-stage="2">
-        <h2>The full 2024 fire season, accumulated</h2>
+        <div class="step-label">Part 2 · The whole season</div>
+        <h2>The 2024 fire season, accumulated</h2>
         <p>
-          Now all those weeks pile up onto one map. The shape of the season emerges — the
-          Sierra Nevada, the Mountain West, the Mexican border, a long Mississippi-Valley
-          corridor of agricultural burning. The Northeast and Upper Midwest barely register.
+          Now every week piles onto one map. The shape of the year emerges — the Sierra Nevada,
+          the Mountain West, the Mexican border, a long Mississippi-Valley corridor of
+          agricultural burning. The Northeast and Upper Midwest barely register.
         </p>
       </div>
       <div class="step" data-stage="3">
-        <h2>Aggregate to the state level</h2>
+        <div class="step-label">Part 3 · By state</div>
+        <h2>Aggregated to the state level</h2>
         <p>
           The dots dissolve. Each state lights up by its total fire radiative power for the
-          season. Now the geography is impossible to miss: a Western band of intense red,
+          season. The geography is impossible to miss: a Western band of intense red,
           a Texas-to-Florida corridor of moderate orange, and the rest of the country quiet.
         </p>
       </div>
       <div class="step" data-stage="4">
+        <div class="step-label">Part 4 · The lightning overlay</div>
         <h2>Now overlay the lightning</h2>
         <p>
-          Toggle <strong>"Overlay lightning data"</strong> below the map. The coloring switches
-          to bivariate — fire activity on the vertical axis, lightning on the horizontal.
-          The myth-buster reveals itself: the bright-red Western states are <em>not</em> the
-          high-lightning states. Florida and the Gulf get the most lightning but barely burn.
-          Click any state to see its weekly breakdown.
+          The same map, recolored on two axes — fire on the vertical, lightning on the
+          horizontal. The myth-buster reveals itself: the bright-red Western states are
+          <em>not</em> the high-lightning states. Florida and the Gulf get the most
+          lightning but barely burn. Click any state to see its weekly breakdown.
         </p>
       </div>
       <div class="step" data-stage="5">
-        <h2>The verdict in one chart</h2>
+        <div class="step-label">Part 5 · The verdict</div>
+        <h2>One dot per fire, plotted against lightning</h2>
         <p>
-          One dot per fire-cell-week. The X-axis is "lightning flashes within 24 hours before
-          this fire was detected." If lightning caused fires, the dots would climb a diagonal.
-          They don't. The headline number updates as you brush or filter by region — the
-          majority of fire cells have <em>no preceding lightning</em>, no matter how you slice it.
+          The X-axis is "lightning flashes within 24 hours before this fire was detected." If
+          lightning caused fires, the dots would climb a diagonal. They don't. Drag any
+          rectangle to focus a subset — the headline number tells you the share that had
+          <em>no preceding lightning</em>. Whatever slice you take, the majority did.
         </p>
       </div>
     </div>
