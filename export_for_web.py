@@ -3,14 +3,16 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-OUT = Path("web/data")
+OUT = Path("docs/data")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # --- load daily grids ---
 fires = pd.read_parquet("data/fires_grid_2024.parquet")
 fires["date"] = pd.to_datetime(fires["date"])
-ltg = pd.read_parquet("data/lightning_grid_mock_2024.parquet")
+# Real GLM data (replaces mock)
+ltg = pd.read_parquet("data/glm_2024.parquet")
 ltg["date"] = pd.to_datetime(ltg["date"])
+ltg = ltg.rename(columns={"n_flash_est": "n_flash_est"})
 
 # --- per-fire-day prior-24h-lightning check (daily, precise) ---
 # Build lookup: (date, cell) -> flash_count
