@@ -1,10 +1,69 @@
-// Lightning vs. Fire — DSC106 Project 3 draft
-// D3 v7 + topojson-client
+// Lightning vs. Fire — DSC106 Project 3 (narrative stage flow)
+// Pure D3 v7 + topojson-client.
 
-const CELL = 0.5; // degrees
+const TOTAL_STAGES = 5;
+let currentStage = 1;
 
+// Shared data (set in main)
+let fires, lights, joined, usTopo, weeks;
+let stateTotals, fireBreaks, lightBreaks;
+let firePerWeekState, lightPerWeekState, priorPerWeekState, fireCountPerWeekState;
+let stateFC;
+
+const BIVARIATE = [
+  ["#e8e8e8", "#b3d4e4", "#5ac8c8"], // fire low
+  ["#e4acac", "#a5add3", "#5698b9"], // fire mid
+  ["#c85a5a", "#985dc8", "#574caf"], // fire high
+];
+
+const STAGES = {
+  1: {
+    title: "Where America burned in 2024, week by week",
+    caption: "Each circle is a 0.5° cell where GOES-16 detected fire that week. Size = total radiative power, color = peak intensity. Drag the slider to scrub through the season.",
+    showPanel: false,
+    render: renderStage1,
+    controls: stage1Controls,
+    nextHint: "See the entire season at once →",
+  },
+  2: {
+    title: "The full 2024 fire season, all weeks at once",
+    caption: "Same dots, but accumulated across every week of June–October. The geography of the season emerges: the Western mountains, the Mississippi Valley, the Mexican border.",
+    showPanel: false,
+    render: renderStage2,
+    controls: () => "",
+    nextHint: "Aggregate to state level →",
+  },
+  3: {
+    title: "Fires aggregated by state",
+    caption: "Same data, summarized: each state colored by total fire radiative power for the season. The pattern hardens — fires concentrate in the Mountain West and a corridor through Texas and the Plains.",
+    showPanel: true,
+    render: renderStage3,
+    controls: () => "",
+    nextHint: "Add lightning to the picture →",
+  },
+  4: {
+    title: "Now overlay the lightning",
+    caption: "Toggle the lightning layer on. The map becomes bivariate — each state colored by both its fire activity (vertical) and its lightning activity (horizontal). The myth-buster: states light up in different patterns. Click any state for a weekly breakdown.",
+    showPanel: true,
+    render: renderStage4,
+    controls: stage4Controls,
+    nextHint: "See the headline verdict →",
+  },
+  5: {
+    title: "The verdict",
+    caption: "One dot per fire-cell-week. X = lightning flashes in the same cell within the prior 24 hours. Y = fire radiative power. If lightning caused fires, the dots would line up on a diagonal. They don't. Brush the X-axis to filter; toggle regions to compare.",
+    showPanel: false,
+    render: renderStage5,
+    controls: stage5Controls,
+    nextHint: "",
+  },
+};
+
+// ============================================================
+// MAIN
+// ============================================================
 (async function main() {
-  const [usTopo, fires, lights, joined] = await Promise.all([
+  [usTopo, fires, lights, joined] = await Promise.all([
     d3.json("us-states.topo.json"),
     d3.csv("data/fires_weekly_2024.csv", d => ({
       week: d.week,
@@ -35,114 +94,75 @@ const CELL = 0.5; // degrees
     })),
   ]);
 
-  // Sorted unique weeks (used by both sliders)
-  const weeks = Array.from(new Set(fires.map(d => d.week))).sort();
+  weeks = Array.from(new Set(fires.map(d => d.week))).sort();
+  stateFC = topojson.feature(usTopo, usTopo.objects.states);
+  precomputeStateData();
 
-  // Each scene wrapped so one failure doesn't take down the others
-  for (const [name, fn] of [
-    ["Scene 1", () => renderScene1(fires, weeks, usTopo)],
-    ["Scene 2", () => renderScene2(fires, lights, weeks, usTopo)],
-    ["Scene 3", () => renderScene3(joined)],
-  ]) {
-    try { fn(); } catch (e) { console.error(`${name} failed:`, e); }
-  }
+  buildStageDots();
+  document.getElementById("stage-total").textContent = TOTAL_STAGES;
+  document.getElementById("prev-btn").addEventListener("click", () => goToStage(currentStage - 1));
+  document.getElementById("next-btn").addEventListener("click", () => goToStage(currentStage + 1));
+
+  // Deep-link via URL hash: #stage=3
+  const initial = parseInt((location.hash.match(/stage=(\d+)/) || [])[1], 10) || 1;
+  goToStage(Math.max(1, Math.min(TOTAL_STAGES, initial)));
+  window.addEventListener("hashchange", () => {
+    const n = parseInt((location.hash.match(/stage=(\d+)/) || [])[1], 10) || 1;
+    if (n !== currentStage) goToStage(n);
+  });
 })();
 
-// -------------------------------------------------------------------
-// Reusable: build a CONUS state map svg into a container
-// -------------------------------------------------------------------
-function buildBaseMap(containerId, { width, height }) {
-  const container = d3.select("#" + containerId);
-  container.selectAll("*").remove();
-  const svg = container.append("svg")
-    .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("preserveAspectRatio", "xMidYMid meet")
-    .style("width", "100%")
-    .style("height", "100%");
-  const projection = d3.geoAlbersUsa().scale(width * 1.3).translate([width / 2, height / 2]);
-  const path = d3.geoPath(projection);
-  return { svg, projection, path };
-}
-
-// -------------------------------------------------------------------
-// SCENE 1: fires-only map, time slider, tooltip
-// -------------------------------------------------------------------
-function renderScene1(fires, weeks, usTopo) {
-  const W = 900, H = 520;
-  const { svg, projection, path } = buildBaseMap("map1", { width: W, height: H });
-
-  // states
-  const states = topojson.feature(usTopo, usTopo.objects.states);
-  svg.append("g").selectAll("path").data(states.features).enter()
-    .append("path").attr("class", "state-fill").attr("d", path);
-
-  const cellLayer = svg.append("g");
-
-  const tip = d3.select("#tooltip1");
-
-  // Scales
-  const allFires = fires.filter(d => projection([d.lon, d.lat]));
-  const sizeScale = d3.scaleSqrt().domain([1, d3.max(allFires, d => d.power) || 1]).range([2, 14]);
-  const colorScale = d3.scaleSequential(d3.interpolateOrRd).domain([0, d3.max(allFires, d => d.maxPower) || 1]);
-
-  const slider = document.getElementById("week-slider");
-  const label = document.getElementById("week-label");
-  slider.max = weeks.length - 1;
-  // Default to week with most fire activity
-  const weekTotals = d3.rollup(allFires, v => d3.sum(v, d => d.power), d => d.week);
-  const defaultWeek = d3.greatest(weeks, w => weekTotals.get(w) || 0);
-  slider.value = weeks.indexOf(defaultWeek);
-
-  function update() {
-    const w = weeks[+slider.value];
-    label.textContent = w;
-    const wkData = fires.filter(d => d.week === w && projection([d.lon, d.lat]));
-    const sel = cellLayer.selectAll("circle").data(wkData, d => `${d.lat},${d.lon}`);
-    sel.enter().append("circle")
-      .attr("stroke", "#fff").attr("stroke-opacity", 0.25)
-      .on("mousemove", function(event, d) {
-        tip.style("display", "block")
-          .style("left", (event.pageX + 14) + "px")
-          .style("top", (event.pageY + 14) + "px")
-          .html(`
-            <div><strong>${d.lat.toFixed(2)}°N, ${(-d.lon).toFixed(2)}°W</strong></div>
-            <div>Week of ${d.week}</div>
-            <div>Fire detections: ${d.fires}</div>
-            <div>Total power: ${d.power.toLocaleString()} MW</div>
-            <div>Peak intensity: ${d.maxPower.toLocaleString()} MW</div>
-          `);
-      })
-      .on("mouseleave", () => tip.style("display", "none"))
-      .merge(sel)
-      .attr("cx", d => projection([d.lon, d.lat])[0])
-      .attr("cy", d => projection([d.lon, d.lat])[1])
-      .attr("r", d => sizeScale(d.power))
-      .attr("fill", d => colorScale(d.maxPower))
-      .attr("fill-opacity", 0.85);
-    sel.exit().remove();
+function buildStageDots() {
+  const wrap = d3.select("#stage-dots");
+  wrap.selectAll("*").remove();
+  for (let i = 1; i <= TOTAL_STAGES; i++) {
+    wrap.append("div").attr("class", "dot")
+      .attr("data-stage", i)
+      .on("click", () => goToStage(i));
   }
-  slider.addEventListener("input", update);
-  update();
 }
 
-// -------------------------------------------------------------------
-// SCENE 2: side-by-side fire & lightning maps with shared slider
-// -------------------------------------------------------------------
-// Bivariate color matrix.  Rows = fire (low/mid/high), Cols = lightning.
-// Stevens-style palette adapted: gray (LL) -> red (HL) on the fire axis,
-// gray -> blue on the lightning axis, with a deep purple at the corner where both are high.
-const BIVARIATE = [
-  ["#e8e8e8", "#b3d4e4", "#5ac8c8"], // fire low
-  ["#e4acac", "#a5add3", "#5698b9"], // fire mid
-  ["#c85a5a", "#985dc8", "#574caf"], // fire high
-];
+function goToStage(n) {
+  if (n < 1 || n > TOTAL_STAGES) return;
+  currentStage = n;
+  const cfg = STAGES[n];
+  document.getElementById("stage-num").textContent = n;
+  document.getElementById("stage-title").textContent = cfg.title;
+  document.getElementById("stage-caption").textContent = cfg.caption;
+  document.getElementById("nav-hint").textContent = cfg.nextHint;
+  document.getElementById("prev-btn").disabled = (n === 1);
+  document.getElementById("next-btn").disabled = (n === TOTAL_STAGES);
 
-function renderScene2(fires, lights, weeks, usTopo) {
-  const W = 720, H = 460;
-  const { svg, projection, path } = buildBaseMap("map2-biv", { width: W, height: H });
-  const stateFC = topojson.feature(usTopo, usTopo.objects.states);
+  d3.selectAll(".stage-dots .dot").classed("active", function() {
+    return +this.dataset.stage === n;
+  });
+  // Sync URL hash without re-triggering goToStage
+  const newHash = `#stage=${n}`;
+  if (location.hash !== newHash) {
+    history.replaceState(null, "", newHash);
+  }
 
-  // Assign each fire/lightning cell to a state via point-in-polygon (cached).
+  const vizArea = document.querySelector(".viz-area");
+  const panel = document.getElementById("state-panel");
+  if (cfg.showPanel) {
+    vizArea.classList.remove("fullwidth");
+    panel.classList.remove("hidden");
+  } else {
+    vizArea.classList.add("fullwidth");
+    panel.classList.add("hidden");
+  }
+
+  // Reset panel content
+  panel.innerHTML = `<div class="state-panel-placeholder">Click any state on the map to see its weekly fire ${n === 4 ? "and lightning " : ""}timeline.</div>`;
+
+  document.getElementById("stage-controls").innerHTML = cfg.controls();
+  cfg.render();
+}
+
+// ============================================================
+// PRECOMPUTATION — state-level aggregates (used by stages 3+4)
+// ============================================================
+function precomputeStateData() {
   const stateCache = new Map();
   function findState(lon, lat) {
     const k = `${lon.toFixed(2)},${lat.toFixed(2)}`;
@@ -154,11 +174,10 @@ function renderScene2(fires, lights, weeks, usTopo) {
     return null;
   }
 
-  // Per-week-per-state aggregates (used for the detail panel time series)
-  const firePerWeekState = new Map();    // key: "week_state" -> total fire power
-  const lightPerWeekState = new Map();   // key: "week_state" -> total flashes
-  const priorPerWeekState = new Map();   // key: "week_state" -> sum of prior-day lightning indicator
-  const fireCountPerWeekState = new Map(); // key: "week_state" -> # of fire cells
+  firePerWeekState = new Map();
+  lightPerWeekState = new Map();
+  priorPerWeekState = new Map();
+  fireCountPerWeekState = new Map();
 
   for (const d of fires) {
     const st = findState(d.lon, d.lat);
@@ -175,105 +194,255 @@ function renderScene2(fires, lights, weeks, usTopo) {
     lightPerWeekState.set(k, (lightPerWeekState.get(k) || 0) + d.flashes);
   }
 
-  // Per-state totals for the bivariate map color
-  const stateTotals = new Map();  // state -> { fire, light, fireCount, priorCount }
+  stateTotals = new Map();
   for (const f of stateFC.features) {
     stateTotals.set(f.id, { fire: 0, light: 0, fireCount: 0, priorCount: 0, name: f.properties.name });
   }
   for (const [k, v] of firePerWeekState) {
-    const [, st] = k.split("_");
-    stateTotals.get(st).fire += v;
+    const st = k.split("_")[1]; stateTotals.get(st).fire += v;
   }
   for (const [k, v] of lightPerWeekState) {
-    const [, st] = k.split("_");
-    if (stateTotals.has(st)) stateTotals.get(st).light += v;
+    const st = k.split("_")[1]; if (stateTotals.has(st)) stateTotals.get(st).light += v;
   }
   for (const [k, v] of priorPerWeekState) {
-    const [, st] = k.split("_");
-    stateTotals.get(st).priorCount += v;
+    const st = k.split("_")[1]; stateTotals.get(st).priorCount += v;
   }
   for (const [k, v] of fireCountPerWeekState) {
-    const [, st] = k.split("_");
-    stateTotals.get(st).fireCount += v;
+    const st = k.split("_")[1]; stateTotals.get(st).fireCount += v;
   }
 
-  // Bivariate binning: tertiles among states that have ANY fire OR ANY lightning
   const activeStates = [...stateTotals.values()].filter(s => s.fire > 0 || s.light > 0);
-  const fireBreaks = [
-    d3.quantile(activeStates.map(s => s.fire).sort(d3.ascending), 0.33),
-    d3.quantile(activeStates.map(s => s.fire).sort(d3.ascending), 0.66),
-  ];
-  const lightBreaks = [
-    d3.quantile(activeStates.map(s => s.light).sort(d3.ascending), 0.33),
-    d3.quantile(activeStates.map(s => s.light).sort(d3.ascending), 0.66),
-  ];
-  function binFire(v) { return v <= fireBreaks[0] ? 0 : v <= fireBreaks[1] ? 1 : 2; }
-  function binLight(v) { return v <= lightBreaks[0] ? 0 : v <= lightBreaks[1] ? 1 : 2; }
-  function bivColor(stateRec) {
-    if (stateRec.fire === 0 && stateRec.light === 0) return "#1c1c22";
-    return BIVARIATE[binFire(stateRec.fire)][binLight(stateRec.light)];
-  }
+  const sortedFire = activeStates.map(s => s.fire).sort(d3.ascending);
+  const sortedLight = activeStates.map(s => s.light).sort(d3.ascending);
+  fireBreaks = [d3.quantile(sortedFire, 0.33), d3.quantile(sortedFire, 0.66)];
+  lightBreaks = [d3.quantile(sortedLight, 0.33), d3.quantile(sortedLight, 0.66)];
+}
 
-  // Paint state polygons
-  const statePaths = svg.append("g").selectAll("path")
+function binFire(v) { return v <= fireBreaks[0] ? 0 : v <= fireBreaks[1] ? 1 : 2; }
+function binLight(v) { return v <= lightBreaks[0] ? 0 : v <= lightBreaks[1] ? 1 : 2; }
+
+// ============================================================
+// SHARED HELPERS
+// ============================================================
+function clearViz() { d3.select("#main-viz").selectAll("*").remove(); }
+
+function buildMap(width, height) {
+  const svg = d3.select("#main-viz").append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .style("width", "100%").style("height", "100%");
+  const projection = d3.geoAlbersUsa().scale(width * 1.3).translate([width / 2, height / 2]);
+  const path = d3.geoPath(projection);
+  return { svg, projection, path };
+}
+
+function paintStateBase(svg, path) {
+  return svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
-    .append("path").attr("class", "state-biv").attr("d", path)
-    .attr("fill", d => bivColor(stateTotals.get(d.id)))
-    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
-    .style("cursor", "pointer");
+    .append("path").attr("class", "state-fill").attr("d", path)
+    .attr("fill", "#1c1c22")
+    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6);
+}
 
-  const tip = d3.select("#tooltip2");
+// ============================================================
+// STAGE 1 — Weekly fires with slider
+// ============================================================
+function stage1Controls() {
+  return `
+    <label for="week-slider">Week starting: <span id="week-label"></span></label>
+    <input type="range" id="week-slider" min="0" max="${weeks.length - 1}" value="0" step="1">
+  `;
+}
+function renderStage1() {
+  clearViz();
+  const { svg, projection, path } = buildMap(900, 540);
+  paintStateBase(svg, path);
+  const layer = svg.append("g");
+  const tip = d3.select("#tooltip");
 
-  statePaths
+  const projFires = fires.map(d => {
+    const p = projection([d.lon, d.lat]);
+    return p ? { ...d, _x: p[0], _y: p[1] } : null;
+  }).filter(Boolean);
+
+  const sizeScale = d3.scaleSqrt().domain([1, d3.max(projFires, d => d.power) || 1]).range([2, 14]);
+  const colorScale = d3.scaleSequential(d3.interpolateOrRd).domain([0, d3.max(projFires, d => d.maxPower) || 1]);
+
+  const weekTotals = d3.rollup(projFires, v => d3.sum(v, d => d.power), d => d.week);
+  const defaultWeek = d3.greatest(weeks, w => weekTotals.get(w) || 0);
+  const slider = document.getElementById("week-slider");
+  slider.value = weeks.indexOf(defaultWeek);
+  const label = document.getElementById("week-label");
+
+  function draw() {
+    const w = weeks[+slider.value];
+    label.textContent = w;
+    const wkData = projFires.filter(d => d.week === w);
+    const sel = layer.selectAll("circle").data(wkData, d => `${d.lat},${d.lon}`);
+    sel.enter().append("circle")
+      .attr("stroke", "#fff").attr("stroke-opacity", 0.25)
+      .on("mousemove", function(event, d) {
+        tip.style("display", "block")
+          .style("left", (event.pageX + 14) + "px")
+          .style("top", (event.pageY + 14) + "px")
+          .html(`<strong>${d.lat.toFixed(2)}°N, ${(-d.lon).toFixed(2)}°W</strong><br>
+                 Week of ${d.week}<br>
+                 Detections: ${d.fires}<br>
+                 Total power: ${d.power.toLocaleString()} MW`);
+      })
+      .on("mouseleave", () => tip.style("display", "none"))
+      .merge(sel)
+      .attr("cx", d => d._x).attr("cy", d => d._y)
+      .attr("r", d => sizeScale(d.power))
+      .attr("fill", d => colorScale(d.maxPower))
+      .attr("fill-opacity", 0.85);
+    sel.exit().remove();
+  }
+  slider.addEventListener("input", draw);
+  draw();
+}
+
+// ============================================================
+// STAGE 2 — All weeks accumulated
+// ============================================================
+function renderStage2() {
+  clearViz();
+  const { svg, projection, path } = buildMap(900, 540);
+  paintStateBase(svg, path);
+  const tip = d3.select("#tooltip");
+
+  const cellMap = new Map();
+  for (const d of fires) {
+    const p = projection([d.lon, d.lat]);
+    if (!p) continue;
+    const key = `${d.lat},${d.lon}`;
+    if (!cellMap.has(key)) {
+      cellMap.set(key, { lat: d.lat, lon: d.lon, _x: p[0], _y: p[1], fires: 0, power: 0, maxPower: 0, weeks: 0 });
+    }
+    const c = cellMap.get(key);
+    c.fires += d.fires;
+    c.power += d.power;
+    c.maxPower = Math.max(c.maxPower, d.maxPower);
+    c.weeks += 1;
+  }
+  const cells = [...cellMap.values()];
+
+  const sizeScale = d3.scaleSqrt().domain([1, d3.max(cells, d => d.power) || 1]).range([2, 18]);
+  const colorScale = d3.scaleSequential(d3.interpolateOrRd).domain([0, d3.max(cells, d => d.maxPower) || 1]);
+
+  svg.append("g").selectAll("circle").data(cells).enter()
+    .append("circle")
+    .attr("cx", d => d._x).attr("cy", d => d._y)
+    .attr("r", d => sizeScale(d.power))
+    .attr("fill", d => colorScale(d.maxPower))
+    .attr("fill-opacity", 0.65)
+    .attr("stroke", "#fff").attr("stroke-opacity", 0.2)
     .on("mousemove", function(event, d) {
-      const s = stateTotals.get(d.id);
       tip.style("display", "block")
         .style("left", (event.pageX + 14) + "px")
         .style("top", (event.pageY + 14) + "px")
-        .html(`<strong>${s.name}</strong><br>
-               Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "—"}<br>
-               Lightning: ${s.light ? s.light.toLocaleString() + " flashes" : "—"}<br>
-               <em>click to see weekly timeline</em>`);
-      statePaths.attr("stroke-width", x => x.id === d.id ? 2 : 0.6)
-                .attr("stroke", x => x.id === d.id ? "#fff" : "#2c2c33");
+        .html(`<strong>${d.lat.toFixed(2)}°N, ${(-d.lon).toFixed(2)}°W</strong><br>
+               ${d.fires} detections across ${d.weeks} weeks<br>
+               Total power: ${d.power.toLocaleString(undefined, {maximumFractionDigits:0})} MW`);
     })
-    .on("mouseleave", function() {
-      tip.style("display", "none");
-      statePaths.attr("stroke-width", 0.6).attr("stroke", "#2c2c33");
-    })
-    .on("click", function(event, d) {
-      renderStatePanel(d.id, stateTotals.get(d.id),
-                        firePerWeekState, lightPerWeekState,
-                        priorPerWeekState, fireCountPerWeekState,
-                        weeks);
-      statePaths.attr("stroke-width", x => x.id === d.id ? 2.5 : 0.6)
-                .attr("stroke", x => x.id === d.id ? "#fff" : "#2c2c33");
-    });
-
-  // Bivariate legend (3x3 swatch)
-  renderBivLegend(stateTotals, fireBreaks, lightBreaks);
+    .on("mouseleave", () => tip.style("display", "none"));
 }
 
-// 3x3 legend with axis labels
-function renderBivLegend() {
-  const container = d3.select("#biv-legend");
-  container.selectAll("*").remove();
+// ============================================================
+// STAGE 3 — State-level fire choropleth
+// ============================================================
+function renderStage3() {
+  clearViz();
+  const { svg, path } = buildMap(720, 460);
+  const tip = d3.select("#tooltip");
+
+  const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
+  const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
+
+  const statePaths = svg.append("g").selectAll("path")
+    .data(stateFC.features).enter()
+    .append("path").attr("d", path)
+    .attr("fill", d => {
+      const s = stateTotals.get(d.id);
+      return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : "#1c1c22";
+    })
+    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
+    .style("cursor", "pointer");
+
+  bindStateInteractions(statePaths, tip, { showLightning: false });
+}
+
+// ============================================================
+// STAGE 4 — Bivariate with lightning toggle
+// ============================================================
+function stage4Controls() {
+  return `
+    <div class="toggle-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="lightning-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+      <span>Overlay lightning data</span>
+    </div>
+  `;
+}
+function renderStage4() {
+  clearViz();
+  const { svg, path } = buildMap(720, 460);
+  const tip = d3.select("#tooltip");
+
+  const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
+  const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
+
+  function fireOnly(s) {
+    return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : "#1c1c22";
+  }
+  function bivariate(s) {
+    if (s.fire === 0 && s.light === 0) return "#1c1c22";
+    return BIVARIATE[binFire(s.fire)][binLight(s.light)];
+  }
+
+  const statePaths = svg.append("g").selectAll("path")
+    .data(stateFC.features).enter()
+    .append("path").attr("d", path)
+    .attr("fill", d => fireOnly(stateTotals.get(d.id)))
+    .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
+    .style("cursor", "pointer");
+
+  bindStateInteractions(statePaths, tip, { showLightning: false });
+
+  const toggle = document.getElementById("lightning-toggle");
+  const legendG = svg.append("g").attr("class", "legend-group");
+  function updateMode() {
+    const on = toggle.checked;
+    statePaths.transition().duration(450)
+      .attr("fill", d => on ? bivariate(stateTotals.get(d.id)) : fireOnly(stateTotals.get(d.id)));
+    legendG.selectAll("*").remove();
+    if (on) drawBivLegend(legendG);
+    bindStateInteractions(statePaths, tip, { showLightning: on });
+  }
+  toggle.addEventListener("change", updateMode);
+  updateMode();
+}
+
+function drawBivLegend(g) {
   const size = 22;
-  const svg = container.append("svg").attr("width", 130).attr("height", 110);
-  // axis labels first
-  svg.append("text").attr("x", 30).attr("y", 12).attr("fill", "#9b9794")
+  const left = 10, top = 340;
+  g.append("rect").attr("x", left - 4).attr("y", top - 22)
+    .attr("width", 140).attr("height", 110)
+    .attr("fill", "rgba(15,15,18,0.92)")
+    .attr("stroke", "#2c2c33");
+  g.append("text").attr("x", left + 30).attr("y", top - 6).attr("fill", "#9b9794")
     .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
     .text("Lightning →");
-  svg.append("text").attr("x", 12).attr("y", 30 + size * 1.5)
-    .attr("fill", "#9b9794").attr("transform", "rotate(-90, 12, " + (30 + size * 1.5) + ")")
+  g.append("text").attr("x", left + 8).attr("y", top + 50)
+    .attr("fill", "#9b9794").attr("transform", `rotate(-90, ${left + 8}, ${top + 50})`)
     .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
     .text("Fire →");
-  // 3x3 grid (top row = high fire, bottom row = low fire — visually intuitive)
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
-      svg.append("rect")
-        .attr("x", 30 + col * size)
-        .attr("y", 20 + (2 - row) * size)
+      g.append("rect")
+        .attr("x", left + 26 + col * size).attr("y", top + (2 - row) * size)
         .attr("width", size).attr("height", size)
         .attr("fill", BIVARIATE[row][col])
         .attr("stroke", "#0f0f12").attr("stroke-width", 1);
@@ -281,80 +450,103 @@ function renderBivLegend() {
   }
 }
 
-// Render the detail panel for a clicked state
-function renderStatePanel(stateId, totals, firePWS, lightPWS, priorPWS, fireCountPWS, weeks) {
+function bindStateInteractions(paths, tip, { showLightning }) {
+  paths
+    .on("mousemove", function(event, d) {
+      const s = stateTotals.get(d.id);
+      const lightLine = showLightning
+        ? `Lightning: ${s.light ? s.light.toLocaleString() + " flashes" : "—"}<br>`
+        : "";
+      tip.style("display", "block")
+        .style("left", (event.pageX + 14) + "px")
+        .style("top", (event.pageY + 14) + "px")
+        .html(`<strong>${s.name}</strong><br>
+               Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "—"}<br>
+               ${lightLine}<em>click to see timeline</em>`);
+      paths.attr("stroke-width", x => x.id === d.id ? 2 : 0.6)
+           .attr("stroke", x => x.id === d.id ? "#fff" : "#2c2c33");
+    })
+    .on("mouseleave", function() {
+      tip.style("display", "none");
+      paths.attr("stroke-width", 0.6).attr("stroke", "#2c2c33");
+    })
+    .on("click", function(event, d) {
+      renderStatePanel(d.id, stateTotals.get(d.id), { showLightning });
+      paths.attr("stroke-width", x => x.id === d.id ? 2.5 : 0.6)
+           .attr("stroke", x => x.id === d.id ? "#fff" : "#2c2c33");
+    });
+}
+
+function renderStatePanel(stateId, totals, { showLightning }) {
   const panel = d3.select("#state-panel");
   panel.selectAll("*").remove();
-
   const pctNoPrior = totals.fireCount === 0 ? null :
     Math.round(100 * (1 - totals.priorCount / totals.fireCount));
 
   panel.append("h3").text(totals.name);
   panel.append("div").attr("class", "panel-sub").text("June–October 2024");
-
   const rows = panel.append("div");
   rows.append("div").attr("class", "stat-row")
     .html(`<span class="stat-label">Total fire radiative power</span>
            <span class="stat-val fire">${totals.fire ? totals.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "—"}</span>`);
-  rows.append("div").attr("class", "stat-row")
-    .html(`<span class="stat-label">Total lightning flashes</span>
-           <span class="stat-val light">${totals.light ? totals.light.toLocaleString() : "—"}</span>`);
+  if (showLightning) {
+    rows.append("div").attr("class", "stat-row")
+      .html(`<span class="stat-label">Total lightning flashes</span>
+             <span class="stat-val light">${totals.light ? totals.light.toLocaleString() : "—"}</span>`);
+  }
   rows.append("div").attr("class", "stat-row")
     .html(`<span class="stat-label">Fire cells observed</span>
            <span class="stat-val">${totals.fireCount.toLocaleString()}</span>`);
-  rows.append("div").attr("class", "stat-row")
-    .html(`<span class="stat-label">Cells <em>with</em> prior-day lightning</span>
-           <span class="stat-val">${totals.priorCount.toLocaleString()}</span>`);
+  if (showLightning) {
+    rows.append("div").attr("class", "stat-row")
+      .html(`<span class="stat-label">Cells <em>with</em> prior-day lightning</span>
+             <span class="stat-val">${totals.priorCount.toLocaleString()}</span>`);
+  }
 
-  // weekly time series chart
   const W = 280, H = 130, M = { top: 10, right: 16, bottom: 22, left: 30 };
   const chart = panel.append("div").attr("class", "panel-chart")
     .append("svg").attr("viewBox", `0 0 ${W} ${H}`)
     .style("width", "100%").style("height", H + "px");
-
   const series = weeks.map(w => ({
     week: w,
-    fire: firePWS.get(`${w}_${stateId}`) || 0,
-    light: lightPWS.get(`${w}_${stateId}`) || 0,
+    fire: firePerWeekState.get(`${w}_${stateId}`) || 0,
+    light: lightPerWeekState.get(`${w}_${stateId}`) || 0,
   }));
   const x = d3.scaleBand().domain(weeks).range([M.left, W - M.right]).padding(0.1);
-  const yFire = d3.scaleLinear()
-    .domain([0, d3.max(series, d => d.fire) || 1])
-    .range([H - M.bottom, M.top]);
-  const yLight = d3.scaleLinear()
-    .domain([0, d3.max(series, d => d.light) || 1])
-    .range([H - M.bottom, M.top]);
+  const yFire = d3.scaleLinear().domain([0, d3.max(series, d => d.fire) || 1]).range([H - M.bottom, M.top]);
+  const yLight = d3.scaleLinear().domain([0, d3.max(series, d => d.light) || 1]).range([H - M.bottom, M.top]);
 
-  // Fire bars (orange)
   chart.append("g").selectAll("rect").data(series).enter().append("rect")
     .attr("x", d => x(d.week))
     .attr("y", d => yFire(d.fire))
     .attr("width", x.bandwidth())
     .attr("height", d => H - M.bottom - yFire(d.fire))
     .attr("fill", "#e0532a").attr("fill-opacity", 0.85);
-  // Lightning line (yellow)
-  const line = d3.line()
-    .x(d => x(d.week) + x.bandwidth() / 2)
-    .y(d => yLight(d.light))
-    .curve(d3.curveMonotoneX);
-  chart.append("path").datum(series).attr("d", line)
-    .attr("fill", "none").attr("stroke", "#f0c419").attr("stroke-width", 2);
 
-  // Tick labels: first / mid / last
+  if (showLightning) {
+    const line = d3.line()
+      .x(d => x(d.week) + x.bandwidth() / 2)
+      .y(d => yLight(d.light))
+      .curve(d3.curveMonotoneX);
+    chart.append("path").datum(series).attr("d", line)
+      .attr("fill", "none").attr("stroke", "#f0c419").attr("stroke-width", 2);
+  }
+
   const tickWeeks = [weeks[0], weeks[Math.floor(weeks.length / 2)], weeks[weeks.length - 1]];
   chart.append("g").attr("class", "axis")
     .attr("transform", `translate(0,${H - M.bottom})`)
     .call(d3.axisBottom(x).tickValues(tickWeeks).tickFormat(d => d.slice(5)));
 
-  // Axis labels in panel
-  panel.append("div").attr("class", "panel-sub")
-    .style("text-align", "center").style("margin-top", "0")
-    .html(`<span style="color:#e0532a">■</span> fire MW &nbsp; <span style="color:#f0c419">━</span> lightning flashes`);
+  panel.append("div").attr("class", "panel-sub").style("text-align", "center").style("margin-top", "0")
+    .html(showLightning
+      ? `<span style="color:#e0532a">■</span> fire MW &nbsp; <span style="color:#f0c419">━</span> lightning flashes`
+      : `<span style="color:#e0532a">■</span> fire MW per week`);
 
-  // Verdict sentence
   let verdict;
   if (totals.fireCount === 0) {
     verdict = "No fires were detected here in 2024.";
+  } else if (!showLightning) {
+    verdict = `${totals.fireCount.toLocaleString()} fire cells were observed in ${totals.name} this season, totalling ${totals.fire.toLocaleString(undefined, {maximumFractionDigits:0})} MW.`;
   } else if (pctNoPrior >= 70) {
     verdict = `Of ${totals.fireCount} fire cells in ${totals.name}, only ${totals.priorCount} had lightning within 24 hours before. <strong>${pctNoPrior}% had no lightning preceding them.</strong>`;
   } else {
@@ -363,12 +555,29 @@ function renderStatePanel(stateId, totals, firePWS, lightPWS, priorPWS, fireCoun
   panel.append("div").attr("class", "panel-verdict").html(verdict);
 }
 
-// -------------------------------------------------------------------
-// SCENE 3: scatter with brush, region filter, headline number, bars
-// -------------------------------------------------------------------
-function renderScene3(joined) {
-  const W = 900, H = 380, M = { top: 20, right: 24, bottom: 50, left: 60 };
-  const svg = d3.select("#scatter").append("svg")
+// ============================================================
+// STAGE 5 — Scatter verdict
+// ============================================================
+function stage5Controls() {
+  return `
+    <div class="headline" style="margin-right:24px">
+      <span id="headline-num">—</span>
+      <span class="headline-text">of selected fire cells had <strong>no</strong> prior-day lightning</span>
+    </div>
+    <div>
+      <strong style="margin-right:6px">Filter region:</strong>
+      <button data-region="All" class="region-btn active">All</button>
+      <button data-region="West" class="region-btn">West</button>
+      <button data-region="Mountain/Plains" class="region-btn">Mountain/Plains</button>
+      <button data-region="South-Central" class="region-btn">South-Central</button>
+      <button data-region="East" class="region-btn">East</button>
+    </div>
+  `;
+}
+function renderStage5() {
+  clearViz();
+  const W = 900, H = 460, M = { top: 20, right: 24, bottom: 50, left: 60 };
+  const svg = d3.select("#main-viz").append("svg")
     .attr("viewBox", `0 0 ${W} ${H}`)
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("width", "100%").style("height", "100%");
@@ -379,7 +588,6 @@ function renderScene3(joined) {
   const y = d3.scaleLog()
     .domain([Math.max(1, d3.min(joined, d => d.power) || 1), d3.max(joined, d => d.power) || 1])
     .range([H - M.bottom, M.top]).nice();
-
   const regionColor = d3.scaleOrdinal()
     .domain(["West", "Mountain/Plains", "South-Central", "East"])
     .range(["#e0532a", "#f6b042", "#4cc2ff", "#a78bfa"]);
@@ -393,14 +601,11 @@ function renderScene3(joined) {
   svg.append("g").attr("class", "axis")
     .attr("transform", `translate(${M.left},0)`)
     .call(d3.axisLeft(y).ticks(6, "~s"))
-    .append("text").attr("x", -H / 2).attr("y", -42)
-    .attr("transform", "rotate(-90)").attr("fill", "currentColor")
-    .attr("text-anchor", "middle").style("font-size", "12px")
+    .append("text").attr("x", -H / 2).attr("y", -42).attr("transform", "rotate(-90)")
+    .attr("fill", "currentColor").attr("text-anchor", "middle").style("font-size", "12px")
     .text("Total fire radiative power (MW, log scale)");
 
-  // Jitter X for points stacked at 0
   const jitter = d => d.priorLightning === 0 ? (Math.random() - 0.5) * 0.6 : 0;
-
   const dotsLayer = svg.append("g");
   let activeRegion = "All";
   let xRange = x.domain();
@@ -423,21 +628,16 @@ function renderScene3(joined) {
       .attr("cy", d => y(Math.max(d.power, 1)))
       .attr("fill", d => regionColor(d.region));
     sel.exit().remove();
-
-    // Headline number = fraction with NO prior lightning
     const noL = data.filter(d => d.priorLightning < 5).length;
     const pct = data.length ? Math.round(100 * noL / data.length) : 0;
-    d3.select("#headline-num").text(`${pct}%`);
-
-    drawBars(data);
+    const hn = document.getElementById("headline-num");
+    if (hn) hn.textContent = `${pct}%`;
   }
 
-  // Brush on x
   const brush = d3.brushX()
     .extent([[M.left, M.top], [W - M.right, H - M.bottom]])
     .on("end", (event) => {
-      if (!event.selection) { xRange = x.domain(); }
-      else { xRange = event.selection.map(x.invert); }
+      xRange = event.selection ? event.selection.map(x.invert) : x.domain();
       draw();
     });
   svg.append("g").attr("class", "brush").call(brush);
@@ -448,60 +648,6 @@ function renderScene3(joined) {
     activeRegion = this.dataset.region;
     draw();
   });
-
-  function drawBars(data) {
-    const barsSvg = d3.select("#region-bars").selectAll("svg").data([null]);
-    const bsv = barsSvg.enter().append("svg")
-      .attr("viewBox", `0 0 ${W} 180`)
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      .style("width", "100%").style("height", "100%")
-      .merge(barsSvg);
-
-    const regions = ["West", "Mountain/Plains", "South-Central", "East"];
-    const summary = regions.map(r => {
-      const sub = data.filter(d => d.region === r);
-      const noL = sub.filter(d => d.priorLightning < 5).length;
-      return { region: r, n: sub.length, pctNoLight: sub.length ? noL / sub.length : 0 };
-    });
-
-    const xb = d3.scaleBand().domain(regions).range([M.left, W - M.right]).padding(0.2);
-    const yb = d3.scaleLinear().domain([0, 1]).range([140, 20]);
-
-    let g = bsv.selectAll("g.bars-root").data([null]);
-    g = g.enter().append("g").attr("class", "bars-root").merge(g);
-    const bars = g.selectAll("rect").data(summary, d => d.region);
-    bars.enter().append("rect").merge(bars)
-      .attr("x", d => xb(d.region))
-      .attr("y", d => yb(d.pctNoLight))
-      .attr("width", xb.bandwidth())
-      .attr("height", d => 140 - yb(d.pctNoLight))
-      .attr("fill", d => regionColor(d.region))
-      .attr("fill-opacity", 0.9);
-    bars.exit().remove();
-
-    const labels = g.selectAll("text.region-label").data(summary, d => d.region);
-    labels.enter().append("text").attr("class", "region-label")
-      .attr("text-anchor", "middle").attr("fill", "#e8e6e1").style("font-size", "12px")
-      .merge(labels)
-      .attr("x", d => xb(d.region) + xb.bandwidth() / 2)
-      .attr("y", d => yb(d.pctNoLight) - 6)
-      .text(d => `${Math.round(d.pctNoLight * 100)}%`);
-    labels.exit().remove();
-
-    const names = g.selectAll("text.region-name").data(summary, d => d.region);
-    names.enter().append("text").attr("class", "region-name")
-      .attr("text-anchor", "middle").attr("fill", "#9b9794").style("font-size", "11px")
-      .merge(names)
-      .attr("x", d => xb(d.region) + xb.bandwidth() / 2)
-      .attr("y", 160)
-      .text(d => `${d.region}  (n=${d.n})`);
-    names.exit().remove();
-
-    const title = g.selectAll("text.bars-title").data([null]);
-    title.enter().append("text").attr("class", "bars-title")
-      .attr("x", M.left).attr("y", 14).attr("fill", "#9b9794").style("font-size", "11px")
-      .merge(title).text("% of fire cells WITHOUT prior-day lightning, by region");
-  }
 
   draw();
 }
