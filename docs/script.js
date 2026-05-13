@@ -198,6 +198,7 @@ function goToStage(n) {
 // state polygons. Used to drop fire/lightning cells that fall over Canada,
 // Mexico, or open water within the Albers USA projection extent.
 // ============================================================
+const CELL_DEG = 0.5;
 const stateCache = new Map();
 function findState(lon, lat) {
   const k = `${lon.toFixed(2)},${lat.toFixed(2)}`;
@@ -207,6 +208,12 @@ function findState(lon, lat) {
   }
   stateCache.set(k, null);
   return null;
+}
+// Records carry the SW corner of their 0.5° cell. For state-membership
+// checks we want the cell *center* — much more representative of where
+// the actual fire detections are.
+function findStateForCell(d) {
+  return findState(d.lon + CELL_DEG / 2, d.lat + CELL_DEG / 2);
 }
 
 // ============================================================
@@ -220,7 +227,7 @@ function precomputeStateData() {
   fireCountPerWeekState = new Map();
 
   for (const d of fires) {
-    const st = findState(d.lon, d.lat);
+    const st = findStateForCell(d);
     if (st === null) continue;
     const k = `${d.week}_${st}`;
     firePerWeekState.set(k, (firePerWeekState.get(k) || 0) + d.power);
@@ -228,7 +235,7 @@ function precomputeStateData() {
     fireCountPerWeekState.set(k, (fireCountPerWeekState.get(k) || 0) + 1);
   }
   for (const d of lights) {
-    const st = findState(d.lon, d.lat);
+    const st = findStateForCell(d);
     if (st === null) continue;
     const k = `${d.week}_${st}`;
     lightPerWeekState.set(k, (lightPerWeekState.get(k) || 0) + d.flashes);
@@ -303,7 +310,7 @@ function renderStage1() {
   // Filter to inside US state polygons only — drops Canadian/Mexican border
   // cells that the Albers USA projection would otherwise place on the map.
   const projFires = fires.map(d => {
-    if (findState(d.lon, d.lat) === null) return null;
+    if (findStateForCell(d) === null) return null;
     const p = projection([d.lon, d.lat]);
     return p ? { ...d, _x: p[0], _y: p[1] } : null;
   }).filter(Boolean);
@@ -356,7 +363,7 @@ function renderStage2() {
 
   const cellMap = new Map();
   for (const d of fires) {
-    if (findState(d.lon, d.lat) === null) continue; // drop non-US cells
+    if (findStateForCell(d) === null) continue; // drop non-US cells
     const p = projection([d.lon, d.lat]);
     if (!p) continue;
     const key = `${d.lat},${d.lon}`;
@@ -657,6 +664,7 @@ function renderStage5() {
 
   // Visual annotation: highlight the "no prior lightning" zone (X near 0)
   // so the ~88% column reads as a population, not a 1-pixel artifact.
+  // Label sits above the chart (no overlap with axis/data).
   const noLightZoneRight = x(5);
   svg.append("g").attr("class", "annotation").lower()
     .call(g => {
@@ -670,25 +678,17 @@ function renderStage5() {
         .attr("y1", M.top).attr("y2", H - M.bottom)
         .attr("stroke", "#b8453a").attr("stroke-opacity", 0.35)
         .attr("stroke-dasharray", "3 3");
+      // Single annotation above the chart, with a bracket pointing to the column
+      const labelY = M.top - 14;
       g.append("text")
-        .attr("x", (x(0) + noLightZoneRight) / 2)
-        .attr("y", M.top + 14)
-        .attr("text-anchor", "middle")
-        .attr("fill", "#b8453a").attr("opacity", 0.85)
+        .attr("x", noLightZoneRight + 4)
+        .attr("y", labelY)
+        .attr("text-anchor", "start")
+        .attr("fill", "#b8453a")
         .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
-        .style("font-size", "10px")
-        .style("text-transform", "uppercase")
-        .style("letter-spacing", "1.2px")
-        .text("no prior lightning");
-      g.append("text")
-        .attr("x", noLightZoneRight + 8)
-        .attr("y", M.top + 14)
-        .attr("fill", "#6b6b6b").attr("opacity", 0.85)
-        .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
-        .style("font-size", "10px")
-        .style("text-transform", "uppercase")
-        .style("letter-spacing", "1.2px")
-        .text("→ prior lightning");
+        .style("font-size", "11px")
+        .style("font-weight", "600")
+        .text("← Cells with no preceding lightning");
     });
 
   // Pre-jitter once per row so brushing/region filtering is stable.
