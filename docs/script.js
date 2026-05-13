@@ -588,7 +588,7 @@ function stage5Controls() {
   return `
     <div class="headline" style="margin-right:24px">
       <span id="headline-num">—</span>
-      <span class="headline-text">of selected fire cells had <strong>no</strong> prior-day lightning</span>
+      <span class="headline-text">of <span id="headline-scope">all fire cells</span> had <strong>no</strong> prior-day lightning</span>
     </div>
     <div>
       <strong style="margin-right:6px">Filter region:</strong>
@@ -597,6 +597,9 @@ function stage5Controls() {
       <button data-region="Mountain/Plains" class="region-btn">Mountain/Plains</button>
       <button data-region="South-Central" class="region-btn">South-Central</button>
       <button data-region="East" class="region-btn">East</button>
+    </div>
+    <div id="selection-info" style="flex-basis:100%; font-size:12px; color:var(--muted); font-style:italic;">
+      Drag any rectangle on the chart to focus on a subset.
     </div>
   `;
 }
@@ -631,39 +634,76 @@ function renderStage5() {
     .attr("fill", "currentColor").attr("text-anchor", "middle").style("font-size", "12px")
     .text("Total fire radiative power (MW, log scale)");
 
-  const jitter = d => d.priorLightning === 0 ? (Math.random() - 0.5) * 0.6 : 0;
+  // Pre-jitter once per row so brushing/region filtering is stable
+  const data0 = joined
+    .filter(d => d.power > 0)
+    .map(d => ({
+      ...d,
+      _x: d.priorLightning + (d.priorLightning === 0 ? (Math.random() - 0.5) * 0.6 : 0),
+    }));
+
   const dotsLayer = svg.append("g");
   let activeRegion = "All";
-  let xRange = x.domain();
+  let brushSel = null;   // [[x0,y0],[x1,y1]] in pixel space, or null
 
-  function visibleData() {
-    return joined.filter(d => {
-      const xv = d.priorLightning + jitter(d);
-      return (activeRegion === "All" || d.region === activeRegion)
-        && d.power > 0
-        && xv >= xRange[0] && xv <= xRange[1];
-    });
+  function dotMatches(d) {
+    if (activeRegion !== "All" && d.region !== activeRegion) return false;
+    if (!brushSel) return true;
+    const cx = x(d._x), cy = y(Math.max(d.power, 1));
+    const [[bx0, by0], [bx1, by1]] = brushSel;
+    return cx >= bx0 && cx <= bx1 && cy >= by0 && cy <= by1;
   }
+
+  function fmt(n) { return n.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
   function draw() {
-    const data = visibleData();
-    const sel = dotsLayer.selectAll("circle").data(data, d => `${d.week}-${d.lat}-${d.lon}`);
+    // Render ALL dots — highlight matches; dim non-matches (don't remove)
+    const sel = dotsLayer.selectAll("circle").data(data0, d => `${d.week}-${d.lat}-${d.lon}`);
     sel.enter().append("circle")
-      .attr("r", 3.5).attr("fill-opacity", 0.7).attr("stroke", "#0f0f12").attr("stroke-width", 0.3)
+      .attr("r", 3.5).attr("stroke", "#0f0f12").attr("stroke-width", 0.3)
       .merge(sel)
-      .attr("cx", d => x(d.priorLightning + jitter(d)))
+      .attr("cx", d => x(d._x))
       .attr("cy", d => y(Math.max(d.power, 1)))
-      .attr("fill", d => regionColor(d.region));
-    sel.exit().remove();
-    const noL = data.filter(d => d.priorLightning < 5).length;
-    const pct = data.length ? Math.round(100 * noL / data.length) : 0;
+      .attr("fill", d => regionColor(d.region))
+      .attr("fill-opacity", d => dotMatches(d) ? 0.85 : 0.08)
+      .attr("r", d => dotMatches(d) ? 3.6 : 2.4);
+
+    const matched = data0.filter(dotMatches);
+    const noL = matched.filter(d => d.priorLightning < 5).length;
+    const pct = matched.length ? Math.round(100 * noL / matched.length) : 0;
+
     const hn = document.getElementById("headline-num");
     if (hn) hn.textContent = `${pct}%`;
+    const hs = document.getElementById("headline-scope");
+    if (hs) {
+      const regionWord = activeRegion === "All" ? "fire cells" : `${activeRegion} fire cells`;
+      hs.textContent = brushSel
+        ? `${matched.length.toLocaleString()} selected ${regionWord}`
+        : `all ${matched.length.toLocaleString()} ${regionWord}`;
+    }
+    const info = document.getElementById("selection-info");
+    if (info) {
+      if (!brushSel) {
+        info.textContent = "Drag any rectangle on the chart to focus on a subset. Click outside to clear.";
+      } else {
+        const [[bx0, by0], [bx1, by1]] = brushSel;
+        const xLo = Math.max(0, x.invert(bx0)).toFixed(0);
+        const xHi = x.invert(bx1).toFixed(0);
+        const yHi = y.invert(by0).toFixed(0); // y inverted: top = high
+        const yLo = y.invert(by1).toFixed(0);
+        const meanPower = matched.length ? d3.mean(matched, d => d.power) : 0;
+        info.innerHTML = `Selection: <strong>${matched.length.toLocaleString()}</strong> cells, ` +
+          `<strong>${xLo}–${xHi}</strong> prior-day flashes, ` +
+          `<strong>${fmt(yLo)}–${fmt(yHi)}</strong> MW fire power. ` +
+          `Mean power in selection: <strong>${fmt(meanPower)} MW</strong>.`;
+      }
+    }
   }
 
-  const brush = d3.brushX()
+  const brush = d3.brush()
     .extent([[M.left, M.top], [W - M.right, H - M.bottom]])
     .on("end", (event) => {
-      xRange = event.selection ? event.selection.map(x.invert) : x.domain();
+      brushSel = event.selection || null;
       draw();
     });
   svg.append("g").attr("class", "brush").call(brush);
