@@ -591,26 +591,15 @@ function renderStatePanel(stateId, totals, { showLightning }) {
 // ============================================================
 function stage5Controls() {
   return `
-    <div class="headline-block">
-      <div class="headline-scope-line">
-        In <span id="headline-scope">all fire cells</span>:
-      </div>
-      <div class="headline-stats">
-        <div class="hstat" id="hstat-no-block">
-          <span class="hstat-num" id="hstat-no">0</span>
-          <span class="hstat-pct" id="hstat-no-pct">0%</span>
-          <span class="hstat-label">no prior-day lightning</span>
-        </div>
-        <div class="hstat-sep">·</div>
-        <div class="hstat" id="hstat-yes-block">
-          <span class="hstat-num" id="hstat-yes">0</span>
-          <span class="hstat-pct" id="hstat-yes-pct">0%</span>
-          <span class="hstat-label">had prior lightning</span>
-        </div>
-      </div>
+    <div class="thesis-line" id="thesis-line">
+      <span class="thesis-num" id="thesis-num">88%</span>
+      <span class="thesis-text">
+        of <span id="thesis-scope">all 2,656 fire cells</span> in 2024
+        had <strong>no</strong> lightning in the 24 hours before they burned.
+      </span>
     </div>
     <div class="region-row">
-      <strong>Filter region:</strong>
+      <strong>Filter by region:</strong>
       <button data-region="All" class="region-btn active">All</button>
       <button data-region="West" class="region-btn">West</button>
       <button data-region="Mountain/Plains" class="region-btn">Mountain/Plains</button>
@@ -618,7 +607,7 @@ function stage5Controls() {
       <button data-region="East" class="region-btn">East</button>
     </div>
     <div id="selection-info">
-      Drag any rectangle on the chart to focus on a subset.
+      Drag any rectangle on the chart to inspect a subset.
     </div>
   `;
 }
@@ -727,50 +716,43 @@ function renderStage5() {
       .attr("fill-opacity", d => dotMatches(d) ? 0.85 : 0.08)
       .attr("r", d => dotMatches(d) ? 3.6 : 2.4);
 
-    const matched = data0.filter(dotMatches);
-    const noL = matched.filter(d => d.priorLightning < 5).length;
-    const withL = matched.length - noL;
-    const pctNo = matched.length ? Math.round(100 * noL / matched.length) : 0;
-    const pctYes = matched.length ? 100 - pctNo : 0;
+    // THESIS number — reflects the region filter only, not the brush.
+    // This is the project's headline finding and should not change just
+    // because the user moved their brush around the chart.
+    const regionAll = data0.filter(d =>
+      activeRegion === "All" || d.region === activeRegion
+    );
+    const regionNoL = regionAll.filter(d => d.priorLightning < 5).length;
+    const regionPct = regionAll.length
+      ? Math.round(100 * regionNoL / regionAll.length)
+      : 0;
+    const tn = document.getElementById("thesis-num");
+    if (tn) tn.textContent = `${regionPct}%`;
+    const ts = document.getElementById("thesis-scope");
+    if (ts) {
+      ts.textContent = activeRegion === "All"
+        ? `all ${regionAll.length.toLocaleString()} fire cells`
+        : `${regionAll.length.toLocaleString()} fire cells in the ${activeRegion} region`;
+    }
 
-    const hs = document.getElementById("headline-scope");
-    if (hs) {
-      const regionWord = activeRegion === "All" ? "fire cells" : `${activeRegion} fire cells`;
-      hs.textContent = brushSel
-        ? `${matched.length.toLocaleString()} selected ${regionWord}`
-        : `all ${matched.length.toLocaleString()} ${regionWord}`;
-    }
-    // Both counts always shown
-    const hno = document.getElementById("hstat-no");
-    const hnoP = document.getElementById("hstat-no-pct");
-    const hyes = document.getElementById("hstat-yes");
-    const hyesP = document.getElementById("hstat-yes-pct");
-    if (hno) hno.textContent = noL.toLocaleString();
-    if (hnoP) hnoP.textContent = `${pctNo}%`;
-    if (hyes) hyes.textContent = withL.toLocaleString();
-    if (hyesP) hyesP.textContent = `${pctYes}%`;
-    // Bold the dominant side
-    const noBlock = document.getElementById("hstat-no-block");
-    const yesBlock = document.getElementById("hstat-yes-block");
-    if (noBlock && yesBlock) {
-      noBlock.classList.toggle("dominant", noL >= withL);
-      yesBlock.classList.toggle("dominant", withL > noL);
-    }
+    const matched = data0.filter(dotMatches);
     const info = document.getElementById("selection-info");
     if (info) {
       if (!brushSel) {
-        info.textContent = "Drag any rectangle on the chart to focus on a subset. Click outside to clear.";
+        info.textContent = "Drag any rectangle on the chart to inspect a subset. Click outside the box to clear.";
       } else {
         const [[bx0, by0], [bx1, by1]] = brushSel;
         const xLo = Math.max(0, x.invert(bx0)).toFixed(0);
         const xHi = x.invert(bx1).toFixed(0);
-        const yHi = y.invert(by0).toFixed(0); // y inverted: top = high
+        const yHi = y.invert(by0).toFixed(0);
         const yLo = y.invert(by1).toFixed(0);
         const meanPower = matched.length ? d3.mean(matched, d => d.power) : 0;
-        info.innerHTML = `Selection: <strong>${matched.length.toLocaleString()}</strong> cells, ` +
-          `<strong>${xLo}–${xHi}</strong> prior-day flashes, ` +
-          `<strong>${fmt(yLo)}–${fmt(yHi)}</strong> MW fire power. ` +
-          `Mean power in selection: <strong>${fmt(meanPower)} MW</strong>.`;
+        const meanLight = matched.length ? d3.mean(matched, d => d.priorLightning) : 0;
+        info.innerHTML =
+          `Selected <strong>${matched.length.toLocaleString()}</strong> fire cells ` +
+          `(${xLo}–${xHi} prior-day flashes, ${fmt(yLo)}–${fmt(yHi)} MW). ` +
+          `Mean fire power <strong>${fmt(meanPower)} MW</strong>, ` +
+          `mean prior-day lightning <strong>${fmt(meanLight)} flashes</strong>.`;
       }
     }
   }
