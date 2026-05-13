@@ -125,12 +125,13 @@ header h1 {
 
 .viz-area {
   display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 18px;
+  grid-template-columns: 1fr 230px;
+  gap: 16px;
   align-items: start;
   position: relative;
+  transition: grid-template-columns 0.55s ease;
 }
-.viz-area.fullwidth { grid-template-columns: 1fr; }
+.viz-area.fullwidth { grid-template-columns: 1fr 0; gap: 0; }
 .map { width: 100%; height: 480px; position: relative; }
 .viz-area.fullwidth .map { height: 440px; }
 
@@ -138,11 +139,26 @@ header h1 {
   background: #1a1a20;
   border: 1px solid #2c2c33;
   border-radius: 6px;
-  padding: 14px;
+  padding: 12px;
   min-height: 480px;
-  font-size: 13px;
+  font-size: 12.5px;
+  opacity: 1;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  overflow: hidden;
 }
-.state-panel.hidden { display: none; }
+.state-panel.hidden {
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+}
+.viz-area.fullwidth .state-panel {
+  /* When fullwidth, hide entirely so it doesn't reserve space */
+  visibility: hidden;
+  width: 0;
+  padding: 0;
+  border: 0;
+  min-height: 0;
+}
 .state-panel-placeholder {
   color: var(--muted);
   font-size: 12px;

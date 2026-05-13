@@ -37,16 +37,18 @@ const STAGES = {
     title: "Fires aggregated by state",
     caption: "Same data, summarized: each state colored by total fire radiative power for the season. The pattern hardens — fires concentrate in the Mountain West and a corridor through Texas and the Plains.",
     showPanel: true,
+    panelDelay: 750,         // wait for map fade-in to complete, then bring panel in
     render: renderStage3,
     controls: () => "",
     nextHint: "Add lightning to the picture →",
   },
   4: {
     title: "Now overlay the lightning",
-    caption: "Toggle the lightning layer on. The map becomes bivariate — each state colored by both its fire activity (vertical) and its lightning activity (horizontal). The myth-buster: states light up in different patterns. Click any state for a weekly breakdown.",
+    caption: "Each state is now colored on two axes — fire activity (vertical) and lightning activity (horizontal). The myth-buster reveals itself: the bright-red Western states aren't where the lightning is. Florida and the Gulf get the most lightning but barely burn. Click any state for a weekly breakdown.",
     showPanel: true,
+    panelDelay: 0,           // panel already visible from stage 3
     render: renderStage4,
-    controls: stage4Controls,
+    controls: () => "",
     nextHint: "See the headline verdict →",
   },
   5: {
@@ -144,6 +146,8 @@ function buildStageDots() {
   }
 }
 
+let panelRevealTimer = null;
+
 function goToStage(n) {
   if (n < 1 || n > TOTAL_STAGES) return;
   currentStage = n;
@@ -155,16 +159,28 @@ function goToStage(n) {
 
   const vizArea = document.querySelector(".viz-area");
   const panel = document.getElementById("state-panel");
+
+  // Cancel any pending panel reveal from previous stage
+  if (panelRevealTimer) { clearTimeout(panelRevealTimer); panelRevealTimer = null; }
+
   if (cfg.showPanel) {
-    vizArea.classList.remove("fullwidth");
-    panel.classList.remove("hidden");
+    // Reset content
+    panel.innerHTML = `<div class="state-panel-placeholder">Click any state to see its weekly fire ${n === 4 ? "and lightning " : ""}timeline.</div>`;
+    if (cfg.panelDelay > 0) {
+      // Render map first at full width, then bring panel in after the map fade-in
+      vizArea.classList.add("fullwidth");
+      panel.classList.add("hidden");
+      panelRevealTimer = setTimeout(() => {
+        vizArea.classList.remove("fullwidth");
+        panel.classList.remove("hidden");
+      }, cfg.panelDelay);
+    } else {
+      vizArea.classList.remove("fullwidth");
+      panel.classList.remove("hidden");
+    }
   } else {
     vizArea.classList.add("fullwidth");
     panel.classList.add("hidden");
-  }
-  // Reset panel content for stages that show it
-  if (cfg.showPanel) {
-    panel.innerHTML = `<div class="state-panel-placeholder">Click any state to see its weekly fire ${n === 4 ? "and lightning " : ""}timeline.</div>`;
   }
 
   document.getElementById("stage-controls").innerHTML = cfg.controls();
@@ -400,58 +416,38 @@ function renderStage3() {
 // ============================================================
 // STAGE 4 — Bivariate with lightning toggle
 // ============================================================
-function stage4Controls() {
-  return `
-    <div class="toggle-row">
-      <label class="toggle-switch">
-        <input type="checkbox" id="lightning-toggle">
-        <span class="toggle-slider"></span>
-      </label>
-      <span>Overlay lightning data</span>
-    </div>
-  `;
-}
 function renderStage4() {
   clearViz();
   const { svg, path } = buildMap(720, 460);
   const tip = d3.select("#tooltip");
-
-  const fireMax = d3.max([...stateTotals.values()], s => s.fire) || 1;
-  const fireColor = d3.scaleSequential(d3.interpolateOrRd).domain([0, Math.log10(fireMax + 1)]);
   const noDataColor = "#3a3a42";
 
-  function fireOnly(s) {
-    return s.fire > 0 ? fireColor(Math.log10(s.fire + 1)) : noDataColor;
-  }
   function bivariate(s) {
     if (s.fire === 0 && s.light === 0) return noDataColor;
     return BIVARIATE[binFire(s.fire)][binLight(s.light)];
   }
 
+  // Start every state at no-data gray, then fade in bivariate colors row-by-row
+  // (same style as Stage 3 — visual consistency, so the transition reads as a
+  // continuation of the same animation idiom)
   const statePaths = svg.append("g").selectAll("path")
     .data(stateFC.features).enter()
     .append("path").attr("d", path)
-    .attr("fill", d => fireOnly(stateTotals.get(d.id)))
+    .attr("fill", noDataColor)
     .attr("stroke", "#2c2c33").attr("stroke-width", 0.6)
     .style("cursor", "pointer");
 
-  bindStateInteractions(statePaths, tip, { showLightning: false });
+  bindStateInteractions(statePaths, tip, { showLightning: true });
 
-  const toggle = document.getElementById("lightning-toggle");
-  const legendG = svg.append("g").attr("class", "legend-group");
-  function updateMode() {
-    const on = toggle.checked;
-    statePaths.transition().duration(700)
-      .attr("fill", d => on ? bivariate(stateTotals.get(d.id)) : fireOnly(stateTotals.get(d.id)));
-    legendG.selectAll("*").remove();
-    if (on) {
-      const l = drawBivLegend(legendG);
-      l.style("opacity", 0).transition().delay(400).duration(400).style("opacity", 1);
-    }
-    bindStateInteractions(statePaths, tip, { showLightning: on });
-  }
-  toggle.addEventListener("change", updateMode);
-  updateMode();
+  statePaths.transition()
+    .delay((d, i) => i * 12)
+    .duration(700)
+    .attr("fill", d => bivariate(stateTotals.get(d.id)));
+
+  // Bivariate legend fades in after the colors land
+  const legendG = svg.append("g").attr("class", "legend-group").style("opacity", 0);
+  drawBivLegend(legendG);
+  legendG.transition().delay(700).duration(450).style("opacity", 1);
 }
 
 function drawBivLegend(g) {
