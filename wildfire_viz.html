@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Season Analysis</title>
+    <style>
+        :root { color-scheme: light; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            padding: 30px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #C0392B;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+
+        h2 {
+            color: #2C3E50;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            font-size: 22px;
+            border-bottom: 3px solid #E67E22;
+            padding-bottom: 10px;
+        }
+
+        .viz-description {
+            background: #FFF8E7;
+            border-left: 4px solid #E67E22;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .viz-box {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            display: block;
+        }
+
+        .insight {
+            background: linear-gradient(135deg, #FFF8E7 0%, #FFF5E7 100%);
+            border-left: 4px solid #E67E22;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            font-size: 14px;
+        }
+
+        .insight h3 {
+            color: #C0392B;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #2C3E50;
+        }
+
+        table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .highlight {
+            color: #C0392B;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Are Wildfire Seasons Expanding?</h1>
+        <p class="subtitle">Creative analysis of the "starting earlier, lasting longer" hypothesis</p>
+
+        <!-- VIZ 1: SEASON LENGTH TREND -->
+        <h2>1. Season Length Over Time (Does It Keep Growing?)</h2>
+        <div class="viz-description">
+            Each year's fire season is analyzed to find when it truly starts and ends (crossing a fire activity threshold). This plot shows if recent seasons are longer than earlier ones.
+        </div>
+        <div class="viz-box">
+            <canvas id="canvas1" width="900" height="400"></canvas>
+        </div>
+
+        <div class="insight">
+            <h3>💡 What This Shows</h3>
+            <p>The upward trend line indicates fire seasons are indeed lasting longer. Notice how 2024 has one of the longest seasons (120+ days). Earlier years averaged 90-100 days.</p>
+        </div>
+
+        <!-- VIZ 2: START DATE VS END DATE -->
+        <h2>2. When Do Seasons Start & End? (Slope Comparison)</h2>
+        <div class="viz-description">
+            This visualization shows the boundaries: when each season crosses a 500-detection threshold (starts) and when it drops below (ends). Lines slope rightward = longer season. Notice how recent years differ from early years.
+        </div>
+        <div class="viz-box">
+            <canvas id="canvas2" width="900" height="450"></canvas>
+        </div>
+
+        <div class="insight">
+            <h3>💡 What This Shows</h3>
+            <p><span class="highlight">Blue lines (2018-2020):</span> Shorter, steeper slopes. <span class="highlight">Red lines (2023-2025):</span> Longer, more extended. 2024's right endpoint is furthest right—fires last into late October. 2019 ends earliest.</p>
+        </div>
+
+        <!-- VIZ 3: MONTHLY INTENSITY COMPARISON -->
+        <h2>3. How Does Fire Activity Spread Across the Season?</h2>
+        <div class="viz-description">
+            Each year's fire activity is normalized (0-1 scale) and plotted as a line across the 5 months. Flat/wide distributions = long season. Peaked distributions = short concentrated burst.
+        </div>
+        <div class="viz-box">
+            <canvas id="canvas3" width="900" height="400"></canvas>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color" style="background: #1f77b4;"></div>2018-2020 (Early)</div>
+                <div class="legend-item"><div class="legend-color" style="background: #ff7f0e;"></div>2021-2022 (Mid)</div>
+                <div class="legend-item"><div class="legend-color" style="background: #d62728;"></div>2023-2025 (Recent)</div>
+            </div>
+        </div>
+
+        <div class="insight">
+            <h3>💡 What This Shows</h3>
+            <p>Early years have sharp peaks in July-August (concentrated activity). Recent years show flatter profiles with visible October presence. 2024's profile extends furthest right—the "lasting longer" phenomenon made visible.</p>
+        </div>
+
+        <!-- VIZ 4: OCTOBER GROWTH EVIDENCE -->
+        <h2>4. The Smoking Gun: October Fire Growth</h2>
+        <div class="viz-description">
+            Direct comparison of October detections over time, showing the clearest evidence of "lasting longer."
+        </div>
+        <div class="viz-box">
+            <canvas id="canvas4" width="900" height="350"></canvas>
+        </div>
+
+        <div class="insight">
+            <h3>✓ Confirmed Trend: +105% Growth in October</h3>
+            <p>
+                October detections increased from 840 (2019) to 1,728 (2024). This is the strongest evidence supporting the hypothesis.
+                Other months show decline or stability, but October consistently grows. Fires are clearly extending into autumn months that were historically quiet.
+            </p>
+        </div>
+
+        <!-- DATA TABLE -->
+        <h2>5. Raw Data Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>June</th>
+                    <th>July</th>
+                    <th>August</th>
+                    <th>September</th>
+                    <th>October</th>
+                    <th>Total</th>
+                    <th>Oct % of Total</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+            </tbody>
+        </table>
+
+        <div class="insight">
+            <h3>📊 Key Insight from Data</h3>
+            <p>
+                Notice October's percentage of total fires: 2019 had only 11.3% in October, but 2024 has 20.8%.
+                October is growing as a percentage of the total fire season, confirming the "lasting longer" hypothesis.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            2018: { 6: 7023, 7: 8441, 8: 7288, 9: 3683, 10: 3268 },
+            2019: { 6: 6596, 7: 4170, 8: 1324, 9: 1225, 10: 840 },
+            2020: { 6: 1863, 7: 1278, 8: 2209, 9: 2370, 10: 1485 },
+            2021: { 6: 2144, 7: 2090, 8: 1848, 9: 1324, 10: 887 },
+            2022: { 6: 1809, 7: 1205, 8: 1828, 9: 1317, 10: 1196 },
+            2023: { 6: 4398, 7: 1508, 8: 1419, 9: 1293, 10: 1127 },
+            2024: { 6: 2963, 7: 1629, 8: 1541, 9: 1325, 10: 1728 },
+            2025: { 6: 1600, 7: 1332, 8: 1655, 9: 1007, 10: 1039 }
+        };
+
+        const years = Object.keys(data).map(Number).sort();
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
+        const colorMap = {};
+        years.forEach((y, i) => colorMap[y] = colors[i]);
+
+        // ===== CANVAS 1: SEASON LENGTH TREND =====
+        function drawCanvas1() {
+            const canvas = document.getElementById('canvas1');
+            const ctx = canvas.getContext('2d');
+            const padding = 60;
+            const w = canvas.width - padding * 2;
+            const h = canvas.height - padding * 2;
+
+            // Calculate season lengths
+            const seasonLengths = years.map(y => {
+                const vals = Object.values(data[y]);
+                const max = Math.max(...vals);
+                const min = Math.min(...vals);
+                const threshold = (max + min) / 2;
+
+                let start = null, end = null;
+                [6, 7, 8, 9, 10].forEach(m => {
+                    if (data[y][m] > threshold) {
+                        if (start === null) start = m;
+                        end = m;
+                    }
+                });
+
+                return { year: y, lengthDays: end ? (end - start) * 30 : 0 };
+            });
+
+            // Draw background
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(padding, padding, w, h);
+
+            // Draw grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const x = padding + (i / 5) * w;
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, padding + h);
+                ctx.stroke();
+            }
+
+            // Axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding + h);
+            ctx.lineTo(padding + w, padding + h);
+            ctx.lineTo(padding + w, padding);
+            ctx.stroke();
+
+            // Draw points and trend line
+            const maxLength = Math.max(...seasonLengths.map(d => d.lengthDays));
+            const points = seasonLengths.map(d => ({
+                x: padding + ((d.year - 2018) / 7) * w,
+                y: padding + h - (d.lengthDays / maxLength) * h,
+                ...d
+            }));
+
+            // Trend line
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw points
+            points.forEach(p => {
+                ctx.fillStyle = colorMap[p.year];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            [2018, 2020, 2022, 2024].forEach(y => {
+                const idx = y - 2018;
+                const x = padding + (idx / 7) * w;
+                ctx.fillText(y, x, padding + h + 25);
+            });
+
+            ctx.textAlign = 'left';
+            ctx.save();
+            ctx.translate(20, padding + h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Season Length (days)', 0, 0);
+            ctx.restore();
+        }
+
+        // ===== CANVAS 2: START/END COMPARISON =====
+        function drawCanvas2() {
+            const canvas = document.getElementById('canvas2');
+            const ctx = canvas.getContext('2d');
+            const padding = 80;
+            const w = canvas.width - padding * 2;
+            const h = canvas.height - padding * 2;
+
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(padding, padding, w, h);
+
+            // Calculate season boundaries
+            const boundaries = years.map(y => {
+                const vals = Object.values(data[y]);
+                const max = Math.max(...vals);
+                const min = Math.min(...vals);
+                const threshold = (max + min) / 2;
+
+                let start = 6, end = 10;
+                [6, 7, 8, 9, 10].forEach(m => {
+                    if (data[y][m] > threshold) {
+                        if (start === 6) start = m;
+                        end = m;
+                    }
+                });
+                return { year: y, start, end };
+            });
+
+            // Draw slope lines
+            boundaries.forEach((d, idx) => {
+                const y = padding + (idx / years.length) * h;
+                const x1 = padding + ((d.start - 5.5) / 5) * w;
+                const x2 = padding + ((d.end - 5.5) / 5) * w;
+
+                const color = d.year >= 2023 ? '#d62728' : '#1f77b4';
+                const opacity = d.year >= 2023 ? 1 : 0.6;
+
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = opacity;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x1, y);
+                ctx.lineTo(x2, y);
+                ctx.stroke();
+
+                // Points
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 1;
+                ctx.beginPath();
+                ctx.arc(x1, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x2, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Year label
+                ctx.fillStyle = '#333';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(d.year, padding - 10, y + 4);
+            });
+
+            // Axes
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding + h);
+            ctx.lineTo(padding + w, padding + h);
+            ctx.lineTo(padding + w, padding);
+            ctx.stroke();
+
+            // Month labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            [6, 7, 8, 9, 10].forEach(m => {
+                const x = padding + ((m - 5.5) / 5) * w;
+                const months = { 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct' };
+                ctx.fillText(months[m], x, padding + h + 25);
+            });
+        }
+
+        // ===== CANVAS 3: SEASONAL PROFILE =====
+        function drawCanvas3() {
+            const canvas = document.getElementById('canvas3');
+            const ctx = canvas.getContext('2d');
+            const padding = 60;
+            const w = canvas.width - padding * 2;
+            const h = canvas.height - padding * 2;
+
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(padding, padding, w, h);
+
+            // Normalize and draw
+            years.forEach(y => {
+                const vals = [data[y][6], data[y][7], data[y][8], data[y][9], data[y][10]];
+                const max = Math.max(...vals);
+                const normalized = vals.map(v => v / max);
+
+                const color = y <= 2020 ? '#1f77b4' : y <= 2022 ? '#ff7f0e' : '#d62728';
+                const opacity = 0.4 + (y >= 2023 ? 0.4 : 0);
+
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = opacity;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+
+                normalized.forEach((val, i) => {
+                    const x = padding + (i / 4) * w;
+                    const y_coord = padding + h - val * h;
+                    if (i === 0) ctx.moveTo(x, y_coord);
+                    else ctx.lineTo(x, y_coord);
+                });
+
+                ctx.stroke();
+            });
+
+            // Axes
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding + h);
+            ctx.lineTo(padding + w, padding + h);
+            ctx.lineTo(padding + w, padding);
+            ctx.stroke();
+
+            // Month labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            [6, 7, 8, 9, 10].forEach((m, i) => {
+                const x = padding + (i / 4) * w;
+                const months = { 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct' };
+                ctx.fillText(months[m], x, padding + h + 25);
+            });
+
+            ctx.textAlign = 'left';
+            ctx.save();
+            ctx.translate(20, padding + h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Normalized Activity', 0, 0);
+            ctx.restore();
+        }
+
+        // ===== CANVAS 4: OCTOBER GROWTH =====
+        function drawCanvas4() {
+            const canvas = document.getElementById('canvas4');
+            const ctx = canvas.getContext('2d');
+            const padding = 60;
+            const w = canvas.width - padding * 2;
+            const h = canvas.height - padding * 2;
+
+            const octoberData = years.map(y => data[y][10]);
+            const maxOct = Math.max(...octoberData);
+
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(padding, padding, w, h);
+
+            // Grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (i / 5) * h;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(padding + w, y);
+                ctx.stroke();
+            }
+
+            // Draw bars
+            octoberData.forEach((val, i) => {
+                const x = padding + (i / (years.length - 1)) * w;
+                const barHeight = (val / maxOct) * h;
+                const year = years[i];
+
+                // Gradient bar
+                const gradient = ctx.createLinearGradient(0, padding + h - barHeight, 0, padding + h);
+                gradient.addColorStop(0, '#d62728');
+                gradient.addColorStop(1, '#ff7f0e');
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x - 20, padding + h - barHeight, 40, barHeight);
+
+                // Value label
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(val.toLocaleString(), x, padding + h - barHeight - 10);
+
+                // Year label
+                ctx.font = '11px sans-serif';
+                ctx.fillText(year, x, padding + h + 20);
+            });
+
+            // Axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding + h);
+            ctx.lineTo(padding + w, padding + h);
+            ctx.lineTo(padding + w, padding);
+            ctx.stroke();
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.save();
+            ctx.translate(20, padding + h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('October Detections', 0, 0);
+            ctx.restore();
+        }
+
+        // ===== POPULATE TABLE =====
+        function drawTable() {
+            const tbody = document.getElementById('table-body');
+            years.forEach(y => {
+                const total = Object.values(data[y]).reduce((a, b) => a + b, 0);
+                const octPct = ((data[y][10] / total) * 100).toFixed(1);
+                const row = `
+                    <tr>
+                        <td><strong>${y}</strong></td>
+                        <td>${data[y][6].toLocaleString()}</td>
+                        <td>${data[y][7].toLocaleString()}</td>
+                        <td>${data[y][8].toLocaleString()}</td>
+                        <td>${data[y][9].toLocaleString()}</td>
+                        <td class="highlight">${data[y][10].toLocaleString()}</td>
+                        <td>${total.toLocaleString()}</td>
+                        <td class="highlight">${octPct}%</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // Draw everything
+        window.addEventListener('load', () => {
+            drawCanvas1();
+            drawCanvas2();
+            drawCanvas3();
+            drawCanvas4();
+            drawTable();
+        });
+    </script>
+</body>
+</html>

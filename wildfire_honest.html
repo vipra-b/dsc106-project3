@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Seasons: Honest Data Analysis</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #C0392B; margin-bottom: 10px; font-size: 28px; }
+        h2 { color: #2C3E50; margin-top: 40px; margin-bottom: 15px; font-size: 20px; border-bottom: 3px solid #E67E22; padding-bottom: 8px; }
+        p { line-height: 1.6; margin-bottom: 15px; font-size: 14px; }
+        .warning {
+            background: #FFE8E8;
+            border-left: 4px solid #C0392B;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .finding {
+            background: #FFF8E7;
+            border-left: 4px solid #E67E22;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .viz { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        canvas { width: 100%; height: auto; display: block; background: white; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .highlight { color: #C0392B; font-weight: 600; }
+        strong { color: #C0392B; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Wildfire Seasons: What the Data Actually Shows</h1>
+
+        <div class="warning">
+            <strong>⚠️ Honest Assessment:</strong> The hypothesis that fire seasons are "starting earlier and lasting longer" is NOT clearly supported by this 8-year dataset. What we see instead is high month-to-month variability with no strong directional trend. Below are visualizations showing what's actually in the data, without cherry-picking.
+        </div>
+
+        <!-- VIZ 1: MONTHLY VARIABILITY -->
+        <h2>1. The Real Story: Month-by-Month Volatility</h2>
+        <p>Each month's fire count varies wildly year-to-year. Notice there's no consistent upward or downward trend—just noise. October ranges from 840 to 3,268. That's not a trend, that's chaos.</p>
+        <div class="viz">
+            <canvas id="canvas1" width="1000" height="400"></canvas>
+        </div>
+
+        <!-- VIZ 2: RANGE & MEDIAN -->
+        <h2>2. Box Plot: Median ± Range for Each Month</h2>
+        <p>This shows the spread of values for each month across all years. The boxes show where most data falls. Big boxes = big variability. If seasons were "lasting longer," we'd expect October's box to be consistently higher than early years—it's not.</p>
+        <div class="viz">
+            <canvas id="canvas2" width="1000" height="400"></canvas>
+        </div>
+
+        <!-- VIZ 3: SEASON TOTAL (NOT INDIVIDUAL MONTHS) -->
+        <h2>3. What Actually Changed: Total Season Intensity</h2>
+        <p>Looking at the total fire count across all 5 months, 2018 was exceptional (29,703), then crashed in 2019-2022, recovered in 2023-2024. This suggests <strong>climate/weather variation year-to-year, not a systematic trend</strong>.</p>
+        <div class="viz">
+            <canvas id="canvas3" width="1000" height="380"></canvas>
+        </div>
+
+        <!-- VIZ 4: OCTOBER SPECIFICALLY - HONEST VIEW -->
+        <h2>4. October Alone: No Clear Trend (With Error Bars)</h2>
+        <p>If you only look at October, it LOOKS like there's growth from 2019→2024 (+105%). But that's cherry-picking the minimum point. 2018 had 3,268 October fires—higher than 2024's 1,728. The trend is unclear.</p>
+        <div class="viz">
+            <canvas id="canvas4" width="1000" height="400"></canvas>
+        </div>
+
+        <!-- DATA TABLE -->
+        <h2>5. Raw Data: See for Yourself</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>June</th>
+                    <th>July</th>
+                    <th>August</th>
+                    <th>Sept</th>
+                    <th>October</th>
+                    <th>Season Total</th>
+                </tr>
+            </thead>
+            <tbody id="data-table"></tbody>
+        </table>
+
+        <!-- CONCLUSIONS -->
+        <h2>What We Can Actually Say</h2>
+        <div class="finding">
+            <p><strong>✗ NOT supported by this data:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Fires are starting earlier (we only have June-October data; no April/May baseline)</li>
+                <li>Fires are lasting longer (season is consistently June-October across all years)</li>
+                <li>October is systematically growing (too much year-to-year noise; 2018 was higher than recent years)</li>
+            </ul>
+        </div>
+
+        <div class="finding">
+            <p><strong>✓ ACTUALLY observed:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>High variability:</strong> October ranges from 840→3,268 (287% swing). This suggests weather/climate variability dominates year-to-year changes.</li>
+                <li><strong>2018 was exceptional:</strong> Highest total fire count (29,703). All other years are lower.</li>
+                <li><strong>No consistent pattern:</strong> If you plot October year-by-year, the line goes up and down randomly, not steadily upward.</li>
+                <li><strong>To properly test the hypothesis:</strong> You'd need 30+ years of data (to average out weather noise) AND data from April/May (to detect earlier starts).</li>
+            </ul>
+        </div>
+
+        <h2>Visualization Approach</h2>
+        <div class="finding">
+            <p>These visualizations use honest encodings:</p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>Line charts:</strong> Show actual values without smoothing, making noise/variability visible</li>
+                <li><strong>Box plots:</strong> Display full range and quartiles, not just means</li>
+                <li><strong>No trend lines:</strong> Avoid implying false patterns where none exist</li>
+                <li><strong>Multiple views:</strong> Same data shown different ways to prevent single-visualization bias</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            2018: { 6: 7023, 7: 8441, 8: 7288, 9: 3683, 10: 3268 },
+            2019: { 6: 6596, 7: 4170, 8: 1324, 9: 1225, 10: 840 },
+            2020: { 6: 1863, 7: 1278, 8: 2209, 9: 2370, 10: 1485 },
+            2021: { 6: 2144, 7: 2090, 8: 1848, 9: 1324, 10: 887 },
+            2022: { 6: 1809, 7: 1205, 8: 1828, 9: 1317, 10: 1196 },
+            2023: { 6: 4398, 7: 1508, 8: 1419, 9: 1293, 10: 1127 },
+            2024: { 6: 2963, 7: 1629, 8: 1541, 9: 1325, 10: 1728 },
+            2025: { 6: 1600, 7: 1332, 8: 1655, 9: 1007, 10: 1039 }
+        };
+
+        const years = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
+        const months = { 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct' };
+
+        // ===== VIZ 1: LINE CHART SHOWING VARIABILITY =====
+        function drawViz1() {
+            const canvas = document.getElementById('canvas1');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvas.offsetWidth * dpr;
+            canvas.height = canvas.offsetHeight * dpr;
+            ctx.scale(dpr, dpr);
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            const pad = 60;
+
+            // Background
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(pad, pad, w - 2*pad, h - 2*pad);
+
+            // Axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            ctx.lineTo(w - pad, h - pad);
+            ctx.lineTo(w - pad, pad);
+            ctx.stroke();
+
+            const monthNames = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+            const monthNums = [6, 7, 8, 9, 10];
+
+            // For each month, draw a line
+            monthNums.forEach((month, idx) => {
+                const values = years.map(y => data[y][month]);
+                const maxVal = Math.max(...Object.values(data).map(m => Object.values(m)).flat());
+
+                ctx.strokeStyle = ['#FF6B35', '#F77F00', '#FCBF49', '#EAE2B7', '#003049'][idx];
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.7;
+                ctx.beginPath();
+
+                years.forEach((y, yi) => {
+                    const x = pad + (yi / (years.length - 1)) * (w - 2*pad);
+                    const val = data[y][month];
+                    const y_pos = h - pad - (val / maxVal) * (h - 2*pad);
+
+                    if (yi === 0) ctx.moveTo(x, y_pos);
+                    else ctx.lineTo(x, y_pos);
+                });
+                ctx.stroke();
+            });
+
+            ctx.globalAlpha = 1;
+
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            years.forEach((y, i) => {
+                const x = pad + (i / (years.length - 1)) * (w - 2*pad);
+                ctx.fillText(y, x, h - 35);
+            });
+
+            // Legend
+            ctx.font = '11px sans-serif';
+            monthNames.forEach((m, i) => {
+                ctx.fillStyle = ['#FF6B35', '#F77F00', '#FCBF49', '#EAE2B7', '#003049'][i];
+                ctx.fillRect(w - 150, 80 + i*18, 12, 12);
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'left';
+                ctx.fillText(m, w - 130, 90 + i*18);
+            });
+
+            ctx.save();
+            ctx.translate(20, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Fire Detections', 0, 0);
+            ctx.restore();
+        }
+
+        // ===== VIZ 2: BOX PLOT =====
+        function drawViz2() {
+            const canvas = document.getElementById('canvas2');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvas.offsetWidth * dpr;
+            canvas.height = canvas.offsetHeight * dpr;
+            ctx.scale(dpr, dpr);
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            const pad = 60;
+
+            // Background
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(pad, pad, w - 2*pad, h - 2*pad);
+
+            // Axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            ctx.lineTo(w - pad, h - pad);
+            ctx.lineTo(w - pad, pad);
+            ctx.stroke();
+
+            const monthNames = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+            const monthNums = [6, 7, 8, 9, 10];
+            const maxVal = Math.max(...Object.values(data).map(m => Object.values(m)).flat());
+
+            monthNums.forEach((month, idx) => {
+                const values = years.map(y => data[y][month]).sort((a, b) => a - b);
+                const min = values[0];
+                const max = values[values.length - 1];
+                const median = (values[3] + values[4]) / 2;
+                const q1 = values[2];
+                const q3 = values[5];
+
+                const x = pad + (idx / 4) * (w - 2*pad);
+                const y_min = h - pad - (min / maxVal) * (h - 2*pad);
+                const y_max = h - pad - (max / maxVal) * (h - 2*pad);
+                const y_med = h - pad - (median / maxVal) * (h - 2*pad);
+                const y_q1 = h - pad - (q1 / maxVal) * (h - 2*pad);
+                const y_q3 = h - pad - (q3 / maxVal) * (h - 2*pad);
+
+                // Whiskers
+                ctx.strokeStyle = '#999';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, y_min);
+                ctx.lineTo(x, y_max);
+                ctx.stroke();
+
+                // Box
+                ctx.fillStyle = ['#FF6B35', '#F77F00', '#FCBF49', '#EAE2B7', '#003049'][idx];
+                ctx.globalAlpha = 0.6;
+                ctx.fillRect(x - 15, y_q3, 30, y_q1 - y_q3);
+                ctx.globalAlpha = 1;
+
+                // Median line
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 15, y_med);
+                ctx.lineTo(x + 15, y_med);
+                ctx.stroke();
+            });
+
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            monthNames.forEach((m, i) => {
+                const x = pad + (i / 4) * (w - 2*pad);
+                ctx.fillText(m, x, h - 35);
+            });
+
+            ctx.save();
+            ctx.translate(20, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Fire Detections (Box = 50% of data)', 0, 0);
+            ctx.restore();
+        }
+
+        // ===== VIZ 3: SEASON TOTAL =====
+        function drawViz3() {
+            const canvas = document.getElementById('canvas3');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvas.offsetWidth * dpr;
+            canvas.height = canvas.offsetHeight * dpr;
+            ctx.scale(dpr, dpr);
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            const pad = 60;
+
+            const totals = years.map(y => Object.values(data[y]).reduce((a, b) => a + b, 0));
+            const maxTotal = Math.max(...totals);
+
+            // Background
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(pad, pad, w - 2*pad, h - 2*pad);
+
+            // Axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            ctx.lineTo(w - pad, h - pad);
+            ctx.lineTo(w - pad, pad);
+            ctx.stroke();
+
+            // Bars
+            totals.forEach((total, i) => {
+                const x = pad + (i / (years.length - 1)) * (w - 2*pad) - 15;
+                const barH = (total / maxTotal) * (h - 2*pad);
+                const y = h - pad - barH;
+
+                ctx.fillStyle = colors[i];
+                ctx.globalAlpha = 0.7;
+                ctx.fillRect(x, y, 30, barH);
+
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(Math.round(total/1000) + 'K', x + 15, y - 5);
+            });
+
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            years.forEach((y, i) => {
+                const x = pad + (i / (years.length - 1)) * (w - 2*pad);
+                ctx.fillText(y, x, h - 35);
+            });
+
+            ctx.save();
+            ctx.translate(20, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Total Season Detections', 0, 0);
+            ctx.restore();
+        }
+
+        // ===== VIZ 4: OCTOBER WITH RANGE =====
+        function drawViz4() {
+            const canvas = document.getElementById('canvas4');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvas.offsetWidth * dpr;
+            canvas.height = canvas.offsetHeight * dpr;
+            ctx.scale(dpr, dpr);
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            const pad = 60;
+
+            const octValues = years.map(y => data[y][10]);
+            const minOct = Math.min(...octValues);
+            const maxOct = Math.max(...octValues);
+
+            // Background
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(pad, pad, w - 2*pad, h - 2*pad);
+
+            // Range band
+            ctx.fillStyle = 'rgba(230, 126, 34, 0.1)';
+            const y_min = h - pad - ((minOct) / maxOct) * (h - 2*pad);
+            const y_max = h - pad - ((maxOct) / maxOct) * (h - 2*pad);
+            ctx.fillRect(pad, y_max, w - 2*pad, y_min - y_max);
+
+            // Axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            ctx.lineTo(w - pad, h - pad);
+            ctx.lineTo(w - pad, pad);
+            ctx.stroke();
+
+            // Grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 4; i++) {
+                const y = h - pad - (i / 4) * (h - 2*pad);
+                ctx.beginPath();
+                ctx.moveTo(pad, y);
+                ctx.lineTo(w - pad, y);
+                ctx.stroke();
+            }
+
+            // Points
+            octValues.forEach((val, i) => {
+                const x = pad + (i / (years.length - 1)) * (w - 2*pad);
+                const y = h - pad - (val / maxOct) * (h - 2*pad);
+
+                ctx.fillStyle = colors[i];
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(val, x, y - 12);
+            });
+
+            // Labels
+            ctx.fillStyle = '#999';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Range: ${minOct}–${maxOct}`, w - 20, 40);
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            years.forEach((y, i) => {
+                const x = pad + (i / (years.length - 1)) * (w - 2*pad);
+                ctx.fillText(y, x, h - 35);
+            });
+
+            ctx.save();
+            ctx.translate(20, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('October Detections', 0, 0);
+            ctx.restore();
+        }
+
+        // Data table
+        const tbody = document.getElementById('data-table');
+        years.forEach(y => {
+            const total = Object.values(data[y]).reduce((a, b) => a + b, 0);
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${y}</strong></td>
+                    <td>${data[y][6].toLocaleString()}</td>
+                    <td>${data[y][7].toLocaleString()}</td>
+                    <td>${data[y][8].toLocaleString()}</td>
+                    <td>${data[y][9].toLocaleString()}</td>
+                    <td class="highlight">${data[y][10].toLocaleString()}</td>
+                    <td><strong>${total.toLocaleString()}</strong></td>
+                </tr>
+            `;
+        });
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                drawViz1();
+                drawViz2();
+                drawViz3();
+                drawViz4();
+            }, 100);
+        });
+
+        window.addEventListener('resize', () => {
+            drawViz1();
+            drawViz2();
+            drawViz3();
+            drawViz4();
+        });
+    </script>
+</body>
+</html>

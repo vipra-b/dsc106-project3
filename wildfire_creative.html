@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Season Expansion: Creative Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            padding: 30px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #C0392B;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+
+        h2 {
+            color: #2C3E50;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            font-size: 22px;
+            border-bottom: 3px solid #E67E22;
+            padding-bottom: 10px;
+        }
+
+        .viz-section {
+            margin-bottom: 60px;
+        }
+
+        .viz-description {
+            background: #FFF8E7;
+            border-left: 4px solid #E67E22;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .viz-description strong {
+            color: #C0392B;
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+            background: #fafafa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        .control-panel {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: #2C3E50;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #E67E22;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #C0392B;
+        }
+
+        button.active {
+            background: #C0392B;
+        }
+
+        .insight-card {
+            background: linear-gradient(135deg, #FFF8E7 0%, #FFF5E7 100%);
+            border-left: 4px solid #E67E22;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .insight-card h3 {
+            color: #C0392B;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .insight-card p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .axis-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .grid-line {
+            stroke: #e0e0e0;
+            stroke-dasharray: 4;
+        }
+
+        .interaction-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Are Wildfire Seasons Expanding?</h1>
+        <p class="subtitle">Creative visualizations testing the "starting earlier, lasting longer" hypothesis</p>
+
+        <!-- VIZ 1: SEASON LENGTH TRAJECTORY -->
+        <div class="viz-section">
+            <h2>1. Season Length Over Time</h2>
+            <div class="viz-description">
+                <strong>What it shows:</strong> The calendar span of each fire season (start date to end date) plotted over time. If seasons are "lasting longer," this line should trend upward. The x-axis shows the calendar date when the season starts; the y-axis shows total season length in days.
+            </div>
+            <svg id="season-length" width="100%" height="400"></svg>
+            <div class="interaction-hint">💡 Hover over points to see exact dates. Watch for the trend: are later years expanding?</div>
+        </div>
+
+        <!-- VIZ 2: SEASON START/END SHIFTING -->
+        <div class="viz-section">
+            <h2>2. Season Boundaries: When Do Fires Start & End?</h2>
+            <div class="viz-description">
+                <strong>What it shows:</strong> A slope chart showing when each fire season officially begins and ends (defined as crossing 500 detections threshold). Lines going left = earlier start; lines going right = later end. Steeper slopes = longer seasons.
+            </div>
+            <svg id="season-bounds" width="100%" height="500"></svg>
+            <div class="interaction-hint">💡 Red = recent years (2023-2025), Blue = early years (2018-2020). Notice if red lines slope differently than blue lines.</div>
+        </div>
+
+        <!-- VIZ 3: SEASON INTENSITY PROFILE -->
+        <div class="viz-section">
+            <h2>3. Season Intensity Profile: How Does Fire Activity Spread Through the Season?</h2>
+            <div class="viz-description">
+                <strong>What it shows:</strong> Normalized fire activity across the 5-month season for each year. Think of it like a "heatwave" shape. If the profile is getting wider/flatter, the season is extending. If the tail is extending into October, that's "lasting longer."
+            </div>
+
+            <div class="control-panel">
+                <div class="control-group">
+                    <label class="control-label">View:</label>
+                    <button class="mode-btn active" data-mode="area">Area Chart (All Years)</button>
+                    <button class="mode-btn" data-mode="comparison">Compare Eras</button>
+                </div>
+            </div>
+
+            <svg id="season-profile" width="100%" height="450"></svg>
+            <div class="interaction-hint">💡 Early years should peak sharply in July-August. Recent years should have a flatter profile with October "tail" extending.</div>
+        </div>
+
+        <!-- VIZ 4: FIRE ACTIVITY DENSITY ACROSS CALENDAR YEAR -->
+        <div class="viz-section">
+            <h2>4. When in the Calendar Year Do Fires Occur? (Density Plot)</h2>
+            <div class="viz-description">
+                <strong>What it shows:</strong> Each year as a separate curve showing how fire activity is distributed across the calendar (June=day 152, July=183, ..., October=305). If curves are shifting right and spreading, the season is starting later AND lasting longer. Wide curves = long season; narrow curves = short season.
+            </div>
+            <svg id="density-plot" width="100%" height="450"></svg>
+            <div class="interaction-hint">💡 Look for shift patterns: Are 2024-2025 curves different from 2018-2019? Does the tail extend further right?</div>
+        </div>
+
+        <!-- KEY FINDINGS -->
+        <div class="insight-card">
+            <h3>🎯 What This Creative Approach Reveals</h3>
+            <p>
+                Instead of just showing "evolution over time," these visualizations directly measure:
+                <br><br>
+                ✓ <strong>Season length in days</strong> - can you see an upward trend?<br>
+                ✓ <strong>Season boundary shifts</strong> - are start dates moving earlier, end dates later?<br>
+                ✓ <strong>Shape changes</strong> - is the seasonal profile flattening or extending?<br>
+                ✓ <strong>Calendar distribution</strong> - where is fire activity concentrated, and is it spreading?<br>
+            </p>
+        </div>
+
+        <!-- METHODOLOGY -->
+        <div class="insight-card">
+            <h3>📊 Data Transformation & Methodology</h3>
+            <p>
+                <strong>Season Definition:</strong> Fire season begins when monthly detections exceed 500 (the threshold where fire activity becomes substantial), and ends when it drops below 500. This allows each year to have its own natural start/end dates rather than assuming fixed June-October.<br><br>
+
+                <strong>Calendar Days:</strong> June 1 = day 152, July 1 = day 182, etc. This allows cross-year comparison on a common "year" scale.<br><br>
+
+                <strong>Normalization:</strong> In the intensity profile, each year's detections are normalized to [0,1] so that high-fire years (2018) and low-fire years (2022) can be compared on the same scale—revealing SHAPE changes independent of magnitude.<br><br>
+
+                <strong>Density Estimation:</strong> Kernel density estimation (bandwidth=10 days) smooths the distribution to reveal underlying patterns.<br>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const rawData = {
+            2018: { 6: 7023, 7: 8441, 8: 7288, 9: 3683, 10: 3268 },
+            2019: { 6: 6596, 7: 4170, 8: 1324, 9: 1225, 10: 840 },
+            2020: { 6: 1863, 7: 1278, 8: 2209, 9: 2370, 10: 1485 },
+            2021: { 6: 2144, 7: 2090, 8: 1848, 9: 1324, 10: 887 },
+            2022: { 6: 1809, 7: 1205, 8: 1828, 9: 1317, 10: 1196 },
+            2023: { 6: 4398, 7: 1508, 8: 1419, 9: 1293, 10: 1127 },
+            2024: { 6: 2963, 7: 1629, 8: 1541, 9: 1325, 10: 1728 },
+            2025: { 6: 1600, 7: 1332, 8: 1655, 9: 1007, 10: 1039 }
+        };
+
+        const months = { 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct' };
+        const dayOfYear = { 6: 152, 7: 182, 8: 213, 9: 244, 10: 274 };
+        const years = Object.keys(rawData).map(Number).sort();
+        const colorScale = d3.scaleOrdinal()
+            .domain(years)
+            .range(d3.schemeSpectral(years.length));
+
+        // ===== VIZ 1: SEASON LENGTH =====
+        const seasonData = years.map(year => {
+            const vals = Object.values(rawData[year]);
+            const maxVal = Math.max(...vals);
+            const minVal = Math.min(...vals);
+            const threshold = (maxVal + minVal) / 2; // Dynamic threshold
+
+            const sorted = Object.entries(rawData[year]).sort((a, b) => a[0] - b[0]);
+            let startMonth = null, endMonth = null;
+
+            for (let [m, v] of sorted) {
+                if (v > threshold && startMonth === null) startMonth = parseInt(m);
+                if (v > threshold) endMonth = parseInt(m);
+            }
+
+            const lengthDays = startMonth ? (endMonth - startMonth) * 30 : 0;
+            return { year, startMonth, endMonth, lengthDays, startMonthActual: startMonth };
+        });
+
+        const svg1 = d3.select('#season-length');
+        const margin1 = { top: 30, right: 30, bottom: 50, left: 60 };
+        const width1 = +svg1.node().clientWidth - margin1.left - margin1.right;
+        const height1 = 400 - margin1.top - margin1.bottom;
+
+        const g1 = svg1.append('g')
+            .attr('transform', `translate(${margin1.left},${margin1.top})`);
+
+        const xScale1 = d3.scaleLinear().domain([6, 10.5]).range([0, width1]);
+        const yScale1 = d3.scaleLinear().domain([0, 160]).range([height1, 0]);
+
+        // Grid lines
+        g1.selectAll('.grid-x').data(xScale1.ticks()).enter()
+            .append('line').attr('class', 'grid-line')
+            .attr('x1', d => xScale1(d)).attr('x2', d => xScale1(d))
+            .attr('y1', 0).attr('y2', height1);
+
+        // Scatter plot with size encoding
+        g1.selectAll('circle').data(seasonData).enter()
+            .append('circle')
+            .attr('cx', d => xScale1(d.startMonthActual || 6.5))
+            .attr('cy', d => yScale1(d.lengthDays))
+            .attr('r', 6)
+            .style('fill', d => colorScale(d.year))
+            .style('opacity', 0.7)
+            .style('stroke', '#333')
+            .style('stroke-width', 1.5)
+            .on('mouseover', function(e, d) {
+                d3.select(this).attr('r', 9).style('opacity', 1);
+                const tooltip = d3.select('body').append('div').attr('class', 'tooltip')
+                    .html(`<strong>${d.year}</strong><br/>Start: Month ${d.startMonth}<br/>Length: ${d.lengthDays} days`);
+                tooltip.style('left', (e.pageX + 10) + 'px').style('top', (e.pageY - 10) + 'px');
+                e.target._tooltip = tooltip.node();
+            })
+            .on('mouseout', function() {
+                d3.select(this).attr('r', 6).style('opacity', 0.7);
+                if (this._tooltip) d3.select(this._tooltip).remove();
+            });
+
+        // Trend line
+        const trend = d3.line()
+            .x(d => xScale1(d.startMonthActual || 6.5))
+            .y(d => yScale1(d.lengthDays));
+        g1.append('path')
+            .attr('d', trend(seasonData))
+            .style('stroke', '#999')
+            .style('stroke-dasharray', '4')
+            .style('stroke-width', 2)
+            .style('fill', 'none');
+
+        // Axes
+        g1.append('g').attr('transform', `translate(0,${height1})`).call(d3.axisBottom(xScale1))
+            .append('text').attr('x', width1 / 2).attr('y', 40)
+            .attr('fill', '#333').attr('class', 'axis-label').text('Season Start Month');
+
+        g1.append('g').call(d3.axisLeft(yScale1))
+            .append('text').attr('transform', 'rotate(-90)')
+            .attr('y', 0 - margin1.left).attr('x', 0 - (height1 / 2))
+            .attr('dy', '1em').attr('fill', '#333').attr('class', 'axis-label').text('Season Length (days)');
+
+        // ===== VIZ 2: SEASON BOUNDS (SLOPE CHART) =====
+        const svg2 = d3.select('#season-bounds');
+        const margin2 = { top: 40, right: 100, bottom: 50, left: 100 };
+        const width2 = +svg2.node().clientWidth - margin2.left - margin2.right;
+        const height2 = 500 - margin2.top - margin2.bottom;
+
+        const g2 = svg2.append('g')
+            .attr('transform', `translate(${margin2.left},${margin2.top})`);
+
+        const xScale2 = d3.scaleLinear().domain([5.5, 10.5]).range([0, width2]);
+        const yScale2 = d3.scaleBand().domain(years.map(String)).range([0, height2]).padding(0.2);
+
+        // Draw slope lines
+        seasonData.forEach(d => {
+            const start = xScale2(d.startMonth || 6);
+            const end = xScale2(d.endMonth || 10);
+            const y = yScale2(String(d.year)) + yScale2.bandwidth() / 2;
+            const color = d.year >= 2023 ? '#E74C3C' : '#3498DB';
+            const opacity = d.year >= 2023 ? 0.8 : 0.5;
+
+            g2.append('line')
+                .attr('x1', start).attr('x2', end)
+                .attr('y1', y).attr('y2', y)
+                .style('stroke', color)
+                .style('stroke-width', 3)
+                .style('opacity', opacity);
+
+            g2.append('circle')
+                .attr('cx', start).attr('cy', y)
+                .attr('r', 4)
+                .style('fill', color)
+                .style('opacity', opacity);
+
+            g2.append('circle')
+                .attr('cx', end).attr('cy', y)
+                .attr('r', 4)
+                .style('fill', color)
+                .style('opacity', opacity);
+
+            g2.append('text')
+                .attr('x', end + 15).attr('y', y + 4)
+                .attr('font-size', '11px')
+                .text(`${d.lengthDays}d`);
+        });
+
+        g2.append('g').attr('transform', `translate(0,${height2})`).call(d3.axisBottom(xScale2))
+            .append('text').attr('x', width2 / 2).attr('y', 40)
+            .attr('fill', '#333').attr('class', 'axis-label').text('Calendar Month');
+
+        g2.append('g').call(d3.axisLeft(yScale2));
+
+        g2.append('text')
+            .attr('x', -20).attr('y', -10)
+            .attr('fill', '#3498DB').attr('font-size', '12px').attr('font-weight', 'bold')
+            .text('◼ 2018-2020');
+        g2.append('text')
+            .attr('x', -20).attr('y', 10)
+            .attr('fill', '#E74C3C').attr('font-size', '12px').attr('font-weight', 'bold')
+            .text('◼ 2023-2025');
+
+        // ===== VIZ 3: SEASON INTENSITY PROFILE =====
+        const normData = years.map(year => {
+            const vals = Object.values(rawData[year]);
+            const maxVal = Math.max(...vals);
+            return {
+                year,
+                profile: Object.entries(rawData[year]).map(([m, v]) => ({
+                    month: parseInt(m),
+                    value: v,
+                    normalized: v / maxVal
+                }))
+            };
+        });
+
+        const svg3 = d3.select('#season-profile');
+        const margin3 = { top: 30, right: 40, bottom: 50, left: 60 };
+        const width3 = +svg3.node().clientWidth - margin3.left - margin3.right;
+        const height3 = 450 - margin3.top - margin3.bottom;
+
+        const g3 = svg3.append('g')
+            .attr('transform', `translate(${margin3.left},${margin3.top})`);
+
+        const xScale3 = d3.scaleBand().domain(['Jun', 'Jul', 'Aug', 'Sep', 'Oct']).range([0, width3]).padding(0.2);
+        const yScale3 = d3.scaleLinear().domain([0, 1.1]).range([height3, 0]);
+
+        const area = d3.area()
+            .x((d, i) => xScale3(Object.keys(months).find(k => parseInt(k) === d.month) ? months[d.month] : 'Jun') + xScale3.bandwidth() / 2)
+            .y0(height3)
+            .y1(d => yScale3(d.normalized));
+
+        normData.forEach(d => {
+            g3.append('path')
+                .attr('d', area(d.profile))
+                .style('fill', colorScale(d.year))
+                .style('opacity', 0.4)
+                .style('stroke', colorScale(d.year))
+                .style('stroke-width', 2);
+        });
+
+        g3.append('g').attr('transform', `translate(0,${height3})`).call(d3.axisBottom(d3.scaleBand().domain(['Jun', 'Jul', 'Aug', 'Sep', 'Oct']).range([0, width3]).padding(0.2)))
+            .append('text').attr('x', width3 / 2).attr('y', 40)
+            .attr('fill', '#333').attr('class', 'axis-label').text('Month');
+
+        g3.append('g').call(d3.axisLeft(yScale3))
+            .append('text').attr('transform', 'rotate(-90)')
+            .attr('y', 0 - margin3.left).attr('x', 0 - (height3 / 2))
+            .attr('dy', '1em').attr('fill', '#333').attr('class', 'axis-label').text('Normalized Fire Activity');
+
+        // Legend
+        const legendData = [...new Set(normData.map(d => d.year))];
+        const legend = d3.select('#season-profile').append('g')
+            .attr('transform', `translate(${margin3.left + 20}, 30)`);
+
+        legendData.slice(0, 4).forEach((year, i) => {
+            legend.append('rect')
+                .attr('y', i * 20)
+                .attr('width', 12).attr('height', 12)
+                .style('fill', colorScale(year)).style('opacity', 0.6);
+            legend.append('text')
+                .attr('x', 18).attr('y', i * 20 + 10)
+                .attr('font-size', '11px')
+                .text(year);
+        });
+
+        // ===== VIZ 4: DENSITY PLOT =====
+        const svg4 = d3.select('#density-plot');
+        const margin4 = { top: 30, right: 40, bottom: 50, left: 60 };
+        const width4 = +svg4.node().clientWidth - margin4.left - margin4.right;
+        const height4 = 450 - margin4.top - margin4.bottom;
+
+        const g4 = svg4.append('g')
+            .attr('transform', `translate(${margin4.left},${margin4.top})`);
+
+        const xScale4 = d3.scaleLinear().domain([150, 310]).range([0, width4]);
+        const yScale4 = d3.scaleLinear().domain([0, 0.015]).range([height4, 0]);
+
+        // Simple kernel density estimation
+        const kdeLine = d3.line()
+            .x(d => xScale4(d.day))
+            .y(d => yScale4(d.density));
+
+        normData.forEach(d => {
+            const points = [];
+            for (let day = 150; day <= 310; day += 2) {
+                let density = 0;
+                d.profile.forEach(p => {
+                    const distance = Math.abs(dayOfYear[p.month] - day);
+                    const bandwidth = 15;
+                    density += Math.exp(-distance * distance / (2 * bandwidth * bandwidth)) / (bandwidth * Math.sqrt(2 * Math.PI));
+                });
+                points.push({ day, density });
+            }
+
+            g4.append('path')
+                .attr('d', kdeLine(points))
+                .style('stroke', colorScale(d.year))
+                .style('stroke-width', 2.5)
+                .style('fill', 'none')
+                .style('opacity', 0.8);
+        });
+
+        g4.append('g').attr('transform', `translate(0,${height4})`).call(d3.axisBottom(xScale4).tickFormat(d => {
+            const dates = { 152: 'Jun1', 182: 'Jul1', 213: 'Aug1', 244: 'Sep1', 274: 'Oct1' };
+            return dates[d] || '';
+        }))
+            .append('text').attr('x', width4 / 2).attr('y', 40)
+            .attr('fill', '#333').attr('class', 'axis-label').text('Calendar Day of Year');
+
+        g4.append('g').call(d3.axisLeft(yScale4))
+            .append('text').attr('transform', 'rotate(-90)')
+            .attr('y', 0 - margin4.left).attr('x', 0 - (height4 / 2))
+            .attr('dy', '1em').attr('fill', '#333').attr('class', 'axis-label').text('Fire Activity Density');
+
+        // Legend
+        const legend4 = d3.select('#density-plot').append('g')
+            .attr('transform', `translate(${margin4.left + 20}, 30)`);
+
+        legendData.forEach((year, i) => {
+            legend4.append('rect')
+                .attr('y', i * 20)
+                .attr('width', 12).attr('height', 2)
+                .style('fill', colorScale(year));
+            legend4.append('text')
+                .attr('x', 18).attr('y', i * 20 + 8)
+                .attr('font-size', '11px')
+                .text(year);
+        });
+    </script>
+</body>
+</html>

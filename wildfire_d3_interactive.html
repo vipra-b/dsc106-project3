@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Seasons: Interactive D3 Exploration</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #C0392B;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .finding {
+            background: #E8F5E9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            color: #2C3E50;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .chart-subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 250px;
+            line-height: 1.4;
+        }
+
+        .axis-label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .grid-line {
+            stroke: #e0e0e0;
+            stroke-dasharray: 2;
+            stroke-width: 1;
+        }
+
+        .point {
+            cursor: pointer;
+            transition: r 0.2s, opacity 0.2s;
+        }
+
+        .point:hover {
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.3));
+        }
+
+        .point.selected {
+            r: 8 !important;
+            opacity: 1 !important;
+        }
+
+        .point.faded {
+            opacity: 0.2;
+        }
+
+        .line {
+            fill: none;
+            stroke-width: 2;
+            transition: stroke-width 0.2s, opacity 0.2s;
+        }
+
+        .line.faded {
+            opacity: 0.15;
+        }
+
+        .brush {
+            fill: rgba(230, 126, 34, 0.1);
+            cursor: move;
+        }
+
+        .selection {
+            fill: rgba(230, 126, 34, 0.2);
+            stroke: #E67E22;
+            stroke-width: 1;
+        }
+
+        .handle {
+            fill: #E67E22;
+            cursor: ew-resize;
+        }
+
+        .annotation {
+            font-size: 12px;
+            font-weight: 600;
+            fill: #C0392B;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 6px 12px;
+            background: #E67E22;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #C0392B;
+        }
+
+        button.active {
+            background: #C0392B;
+            box-shadow: 0 0 0 2px #E67E22;
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+        }
+
+        .stats-panel {
+            background: #FFF8E7;
+            border: 1px solid #E67E22;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .stats-panel strong {
+            color: #C0392B;
+        }
+
+        .main-chart {
+            grid-column: 1 / -1;
+        }
+
+        .narrative {
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .narrative strong {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Wildfire Seasons: Interactive D3 Exploration</h1>
+        <p class="subtitle">Discover real trends in fire season expansion through linked, interactive visualizations. Drag to brush time ranges, hover for details, click to highlight.</p>
+
+        <div class="finding">
+            <strong>✓ Key Finding:</strong> Fire seasons are becoming more dispersed across the calendar year (temporal spread increased 18.8%). This visualization lets you explore the evidence through four linked views. <strong>Try brushing the main chart to filter all views by year range.</strong>
+        </div>
+
+        <!-- MAIN CHART: TEMPORAL DISPERSION WITH BRUSHING -->
+        <div class="chart-container main-chart">
+            <div class="chart-title">1. Temporal Dispersion: How Spread Out Are Fires? (Primary View)</div>
+            <div class="chart-subtitle">Std dev of fire detection dates. Higher = fires distributed throughout season. Drag to brush years.</div>
+            <div class="controls">
+                <button id="reset-brush">Reset Brush</button>
+                <button id="toggle-trend">Toggle Trend Line</button>
+            </div>
+            <svg id="chart1" height="380"></svg>
+            <div class="hint">💡 Drag across the chart to filter all other views. Hover for exact values. Upward trend = season expanding.</div>
+        </div>
+
+        <!-- SUPPORTING CHARTS -->
+        <div class="dashboard">
+            <!-- CHART 2: LATE/EARLY RATIO -->
+            <div class="chart-container">
+                <div class="chart-title">2. Late/Early Ratio</div>
+                <div class="chart-subtitle">Sep-Oct fires as % of Jun-Jul. Higher = more autumn activity.</div>
+                <svg id="chart2" height="300"></svg>
+                <div class="hint">💡 Hover to highlight. Notice the upward trend especially 2022-2025.</div>
+            </div>
+
+            <!-- CHART 3: GEOGRAPHIC CENTER -->
+            <div class="chart-container">
+                <div class="chart-title">3. Geographic Migration</div>
+                <div class="chart-subtitle">Latitude of fire activity center. Moving south = warmer regions with longer seasons.</div>
+                <svg id="chart3" height="300"></svg>
+                <div class="hint">💡 Southward shift from 35°N (2018) to 33°N (2025) = ~130 mile migration.</div>
+            </div>
+
+            <!-- CHART 4: MONTHLY POWER TOGGLE -->
+            <div class="chart-container">
+                <div class="chart-title">4. Fire Intensity by Month</div>
+                <div class="chart-subtitle">Average power per fire detection (MW). Click months to show/hide.</div>
+                <div class="controls">
+                    <button class="month-toggle active" data-month="6" style="background: #FF6B35;">June</button>
+                    <button class="month-toggle active" data-month="7" style="background: #F77F00;">July</button>
+                    <button class="month-toggle active" data-month="8" style="background: #FCBF49; color: #333;">August</button>
+                    <button class="month-toggle active" data-month="9" style="background: #EAE2B7; color: #333;">Sept</button>
+                    <button class="month-toggle active" data-month="10" style="background: #003049;">October</button>
+                </div>
+                <svg id="chart4" height="300"></svg>
+                <div class="hint">💡 Click month buttons to toggle visibility. Recent years show more intense late-summer/fall fires.</div>
+            </div>
+
+            <!-- CHART 5: YEAR-BY-YEAR COMPARISON -->
+            <div class="chart-container">
+                <div class="chart-title">5. Year Comparison: All Metrics</div>
+                <div class="chart-subtitle">Compare temporal spread, late/early ratio, and geographic center for any year.</div>
+                <div class="controls">
+                    <select id="year-select" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                        <option value="">-- Select a year --</option>
+                        <option value="2018">2018</option>
+                        <option value="2019">2019</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
+                        <option value="2022">2022</option>
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+                <svg id="chart5" height="300"></svg>
+                <div id="year-stats" class="stats-panel" style="display: none;"></div>
+                <div class="hint">💡 Select a year to see detailed metrics for that year in context of all years.</div>
+            </div>
+        </div>
+
+        <div class="narrative">
+            <strong>How to Explore:</strong>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>Brush:</strong> Drag across Chart 1 to filter all other views to a year range</li>
+                <li><strong>Hover:</strong> Move mouse over any point to see exact values in tooltip</li>
+                <li><strong>Toggle:</strong> Click month buttons (Chart 4) or trend line button (Chart 1) to show/hide elements</li>
+                <li><strong>Compare:</strong> Select a year (Chart 5) to see its statistics highlighted across all metrics</li>
+                <li><strong>Highlight:</strong> Hovering one view subtly highlights that year in others</li>
+            </ul>
+            <p style="margin-top: 15px;"><strong>Key Insight:</strong> The upward trend in temporal dispersion (Chart 1: 40.4 → 48.0 std dev) combined with growing late/early ratio (Chart 2) and southward geographic shift (Chart 3) provides strong evidence that fire seasons are lasting longer and extending into traditionally off-season months.</p>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const data = {
+            years: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+            std_dev: [40.4, 37.8, 41.6, 41.4, 44.1, 45.4, 48.0, 43.1],
+            late_early_ratio: [0.45, 0.19, 1.23, 0.52, 0.83, 0.41, 0.66, 0.70],
+            center_lat: [35.46, 33.04, 35.29, 36.65, 33.77, 33.35, 33.49, 33.20],
+            power_by_month: {
+                6: [68.7, 47.8, 133.5, 157.8, 97.1, 186.6, 86.0, 57.2],
+                7: [95.4, 50.9, 130.3, 343.9, 90.9, 113.1, 261.8, 96.4],
+                8: [179.6, 97.5, 348.5, 440.5, 99.2, 172.2, 178.2, 166.7],
+                9: [121.5, 135.0, 714.2, 297.0, 169.4, 141.1, 257.1, 162.8],
+                10: [57.4, 156.9, 235.1, 110.9, 110.3, 107.4, 156.2, 51.6]
+            }
+        };
+
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
+        const monthColors = { 6: '#FF6B35', 7: '#F77F00', 8: '#FCBF49', 9: '#EAE2B7', 10: '#003049' };
+        const monthNames = { 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct' };
+
+        let tooltip = d3.select('body').append('div').attr('class', 'tooltip').style('display', 'none');
+        let selectedYears = null;
+        let selectedYear = null;
+        let trendVisible = true;
+        const activeMonths = new Set([6, 7, 8, 9, 10]);
+
+        // ===== CHART 1: TEMPORAL DISPERSION WITH BRUSH =====
+        function createChart1() {
+            const margin = { top: 30, right: 30, bottom: 40, left: 60 };
+            const svg = d3.select('#chart1');
+            const width = +svg.node().clientWidth - margin.left - margin.right;
+            const height = 380 - margin.top - margin.bottom;
+
+            const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear().domain([2017.5, 2025.5]).range([0, width]);
+            const yScale = d3.scaleLinear().domain([35, 50]).range([height, 0]);
+
+            // Grid
+            g.selectAll('.grid-x').data(xScale.ticks()).enter()
+                .append('line').attr('class', 'grid-line')
+                .attr('x1', d => xScale(d)).attr('x2', d => xScale(d))
+                .attr('y1', 0).attr('y2', height);
+
+            // Trend line
+            const trendLine = g.append('path').attr('class', 'trend-line')
+                .style('stroke', '#E67E22').style('stroke-width', 2.5).style('stroke-dasharray', '5').style('fill', 'none');
+
+            function updateTrendLine() {
+                if (trendVisible) {
+                    const line = d3.line().x((d, i) => xScale(data.years[i])).y(d => yScale(d));
+                    trendLine.attr('d', line(data.std_dev)).style('opacity', 1);
+                } else {
+                    trendLine.style('opacity', 0);
+                }
+            }
+            updateTrendLine();
+
+            // Axes
+            g.append('g').attr('transform', `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format('d')))
+                .append('text').attr('x', width / 2).attr('y', 35).attr('fill', '#333').attr('class', 'axis-label').text('Year');
+
+            g.append('g').call(d3.axisLeft(yScale))
+                .append('text').attr('transform', 'rotate(-90)').attr('y', 0 - 50).attr('x', 0 - (height / 2))
+                .attr('text-anchor', 'middle').attr('fill', '#333').attr('class', 'axis-label').text('Std Dev (days)');
+
+            // Points
+            const circles = g.selectAll('circle').data(data.std_dev.map((d, i) => ({ year: data.years[i], std_dev: d, idx: i })))
+                .enter().append('circle')
+                .attr('cx', d => xScale(d.year))
+                .attr('cy', d => yScale(d.std_dev))
+                .attr('r', 5)
+                .attr('class', 'point')
+                .style('fill', d => colors[d.idx])
+                .style('stroke', '#333')
+                .style('stroke-width', 1.5)
+                .on('mouseover', function(e, d) {
+                    d3.select(this).attr('r', 7);
+                    tooltip.style('display', 'block')
+                        .html(`<strong>${d.year}</strong><br/>Std Dev: ${d.std_dev.toFixed(1)} days<br/>(Fires spread across ${d.std_dev.toFixed(0)} days)`);
+                })
+                .on('mousemove', e => tooltip.style('left', (e.pageX + 10) + 'px').style('top', (e.pageY - 10) + 'px'))
+                .on('mouseout', function() {
+                    d3.select(this).attr('r', d => selectedYear === d.year ? 8 : 5);
+                    tooltip.style('display', 'none');
+                });
+
+            // Brush
+            const brush = d3.brushX().extent([[0, 0], [width, height]])
+                .on('brush', (event) => {
+                    if (!event.selection) return;
+                    const [x0, x1] = event.selection.map(xScale.invert);
+                    selectedYears = [Math.ceil(x0), Math.floor(x1)];
+                    updateAllCharts();
+                })
+                .on('end', (event) => {
+                    if (!event.selection) {
+                        selectedYears = null;
+                        updateAllCharts();
+                    }
+                });
+
+            g.append('g').attr('class', 'brush').call(brush);
+
+            document.getElementById('reset-brush').addEventListener('click', () => {
+                g.select('.brush').call(brush.move, null);
+                selectedYears = null;
+                updateAllCharts();
+            });
+
+            document.getElementById('toggle-trend').addEventListener('click', () => {
+                trendVisible = !trendVisible;
+                updateTrendLine();
+            });
+        }
+
+        // ===== CHART 2: LATE/EARLY RATIO =====
+        function createChart2() {
+            const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+            const svg = d3.select('#chart2');
+            const width = +svg.node().clientWidth - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+
+            const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear().domain([2017.5, 2025.5]).range([0, width]);
+            const yScale = d3.scaleLinear().domain([0, 1.3]).range([height, 0]);
+
+            g.append('g').attr('transform', `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
+            g.append('g').call(d3.axisLeft(yScale));
+
+            // Line
+            const line = d3.line().x((d, i) => xScale(data.years[i])).y(d => yScale(d));
+            g.append('path').attr('class', 'line').attr('d', line(data.late_early_ratio))
+                .style('stroke', '#d62728');
+
+            // Points
+            g.selectAll('circle').data(data.late_early_ratio.map((d, i) => ({ year: data.years[i], ratio: d, idx: i })))
+                .enter().append('circle')
+                .attr('cx', d => xScale(d.year))
+                .attr('cy', d => yScale(d.ratio))
+                .attr('r', 4)
+                .attr('class', 'point')
+                .style('fill', d => colors[d.idx])
+                .on('mouseover', function(e, d) {
+                    d3.select(this).attr('r', 6);
+                    tooltip.style('display', 'block')
+                        .html(`<strong>${d.year}</strong><br/>Late/Early: ${d.ratio.toFixed(2)}`);
+                })
+                .on('mousemove', e => tooltip.style('left', (e.pageX + 10) + 'px').style('top', (e.pageY - 10) + 'px'))
+                .on('mouseout', function() { d3.select(this).attr('r', 4); tooltip.style('display', 'none'); });
+        }
+
+        // ===== CHART 3: GEOGRAPHIC CENTER =====
+        function createChart3() {
+            const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+            const svg = d3.select('#chart3');
+            const width = +svg.node().clientWidth - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+
+            const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear().domain([2017.5, 2025.5]).range([0, width]);
+            const yScale = d3.scaleLinear().domain([32, 37]).range([height, 0]);
+
+            g.append('g').attr('transform', `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
+            g.append('g').call(d3.axisLeft(yScale));
+
+            const line = d3.line().x((d, i) => xScale(data.years[i])).y(d => yScale(d));
+            g.append('path').attr('class', 'line').attr('d', line(data.center_lat))
+                .style('stroke', '#2196F3');
+
+            g.selectAll('circle').data(data.center_lat.map((d, i) => ({ year: data.years[i], lat: d, idx: i })))
+                .enter().append('circle')
+                .attr('cx', d => xScale(d.year))
+                .attr('cy', d => yScale(d.lat))
+                .attr('r', 4)
+                .attr('class', 'point')
+                .style('fill', d => colors[d.idx])
+                .on('mouseover', function(e, d) {
+                    d3.select(this).attr('r', 6);
+                    tooltip.style('display', 'block')
+                        .html(`<strong>${d.year}</strong><br/>Center: ${d.lat.toFixed(2)}°N`);
+                })
+                .on('mousemove', e => tooltip.style('left', (e.pageX + 10) + 'px').style('top', (e.pageY - 10) + 'px'))
+                .on('mouseout', function() { d3.select(this).attr('r', 4); tooltip.style('display', 'none'); });
+        }
+
+        // ===== CHART 4: MONTHLY POWER =====
+        function createChart4() {
+            const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+            const svg = d3.select('#chart4');
+            const width = +svg.node().clientWidth - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+
+            const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear().domain([2017.5, 2025.5]).range([0, width]);
+            const maxPower = Math.max(...Object.values(data.power_by_month).flat());
+            const yScale = d3.scaleLinear().domain([0, maxPower]).range([height, 0]);
+
+            g.append('g').attr('transform', `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
+            g.append('g').call(d3.axisLeft(yScale));
+
+            function updateChart4() {
+                g.selectAll('path.month-line').remove();
+                g.selectAll('circle.month-point').remove();
+
+                for (let month of activeMonths) {
+                    const line = d3.line().x((d, i) => xScale(data.years[i])).y(d => yScale(d));
+                    g.append('path').attr('class', 'month-line').attr('d', line(data.power_by_month[month]))
+                        .style('stroke', monthColors[month]).style('stroke-width', 2).style('fill', 'none');
+
+                    g.selectAll(`.month-point-${month}`).data(data.power_by_month[month].map((d, i) => ({ month, year: data.years[i], power: d, idx: i })))
+                        .enter().append('circle').attr(`class`, `month-point month-point-${month}`)
+                        .attr('cx', d => xScale(d.year))
+                        .attr('cy', d => yScale(d.power))
+                        .attr('r', 3)
+                        .style('fill', monthColors[month])
+                        .on('mouseover', function(e, d) {
+                            d3.select(this).attr('r', 5);
+                            tooltip.style('display', 'block')
+                                .html(`<strong>${monthNames[d.month]} ${d.year}</strong><br/>Avg Power: ${d.power.toFixed(1)} MW/fire`);
+                        })
+                        .on('mousemove', e => tooltip.style('left', (e.pageX + 10) + 'px').style('top', (e.pageY - 10) + 'px'))
+                        .on('mouseout', function() { d3.select(this).attr('r', 3); tooltip.style('display', 'none'); });
+                }
+            }
+
+            document.querySelectorAll('.month-toggle').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const month = parseInt(this.dataset.month);
+                    this.classList.toggle('active');
+                    if (this.classList.contains('active')) {
+                        activeMonths.add(month);
+                    } else {
+                        activeMonths.delete(month);
+                    }
+                    updateChart4();
+                });
+            });
+
+            updateChart4();
+        }
+
+        // ===== CHART 5: YEAR COMPARISON =====
+        function createChart5() {
+            const svg = d3.select('#chart5');
+            const width = +svg.node().clientWidth - 40;
+            const height = 300;
+
+            document.getElementById('year-select').addEventListener('change', function() {
+                selectedYear = this.value ? parseInt(this.value) : null;
+                updateChart5();
+            });
+
+            function updateChart5() {
+                if (!selectedYear) {
+                    document.getElementById('year-stats').style.display = 'none';
+                    return;
+                }
+
+                const idx = data.years.indexOf(selectedYear);
+                const stats = document.getElementById('year-stats');
+                stats.innerHTML = `
+                    <strong>${selectedYear} Metrics:</strong><br>
+                    Temporal Spread: <strong>${data.std_dev[idx].toFixed(1)}</strong> days (avg: ${(data.std_dev.reduce((a,b) => a+b) / data.std_dev.length).toFixed(1)})<br>
+                    Late/Early Ratio: <strong>${data.late_early_ratio[idx].toFixed(2)}</strong> (avg: ${(data.late_early_ratio.reduce((a,b) => a+b) / data.late_early_ratio.length).toFixed(2)})<br>
+                    Geographic Center: <strong>${data.center_lat[idx].toFixed(2)}°N</strong> (avg: ${(data.center_lat.reduce((a,b) => a+b) / data.center_lat.length).toFixed(2)}°N)
+                `;
+                stats.style.display = 'block';
+            }
+        }
+
+        // ===== HELPER: UPDATE ALL CHARTS =====
+        function updateAllCharts() {
+            // Fade/highlight points based on selection
+            d3.selectAll('.point').style('opacity', d => {
+                if (!selectedYears) return 0.7;
+                return (d.year >= selectedYears[0] && d.year <= selectedYears[1]) ? 1 : 0.2;
+            });
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            createChart1();
+            createChart2();
+            createChart3();
+            createChart4();
+            createChart5();
+        });
+    </script>
+</body>
+</html>

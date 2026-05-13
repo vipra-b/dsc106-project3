@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Big intermediate CSV (regenerable from parquet via export_for_web.py)
+data/lightning_grid_mock_2024.csv
+
+# Local dev artifacts
+/tmp/
+*.pid

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lightning Doesn't Light Most U.S. Wildfires</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Lightning Doesn't Light Most U.S. Wildfires</h1>
+    <p class="lede">
+      Folk belief blames lightning for wildfires. NOAA and the USDA say roughly
+      <strong>85%</strong> are human-caused. Here is what one season of GOES-16 satellite
+      data (June&ndash;October 2024) shows about where lightning struck and where the country burned.
+    </p>
+    <p class="note">
+      <strong>Draft notice.</strong> Fire pixels are real GOES-16 ABI-L2-FDCC detections (1 snapshot/day, 20:00 UTC,
+      binned to 0.5&deg; cells). Lightning is mock data with realistic CONUS climatology while the real GLM extract finishes.
+    </p>
+  </header>
+
+  <!-- =========== SCENE 1 =========== -->
+  <section class="scene" id="scene1">
+    <h2>1. Where America burned in 2024</h2>
+    <p class="subtitle">
+      Each circle = a 0.5&deg; cell that registered fire activity during the selected week.
+      <span class="enc">Size</span> = total radiative power (MW). <span class="enc">Color</span> = peak intensity.
+      Drag the slider to scrub through the season.
+    </p>
+    <div class="scene1-controls">
+      <label for="week-slider">Week starting: <span id="week-label"></span></label>
+      <input type="range" id="week-slider" min="0" max="0" value="0" step="1">
+    </div>
+    <div id="map1" class="map"></div>
+    <div class="tooltip" id="tooltip1"></div>
+  </section>
+
+  <!-- =========== SCENE 2 =========== -->
+  <section class="scene" id="scene2">
+    <h2>2. Where lightning happens vs. where fires happen</h2>
+    <p class="subtitle">
+      Each state is colored on two dimensions at once &mdash; how much it
+      <span class="enc fire">burned</span> and how much
+      <span class="enc light">lightning</span> hit it during the 2024 fire season.
+      Click any state to open a detailed breakdown.
+    </p>
+    <div class="scene2-layout">
+      <div class="scene2-map-wrap">
+        <div id="map2-biv" class="map"></div>
+        <div id="biv-legend" class="biv-legend"></div>
+      </div>
+      <aside id="state-panel" class="state-panel">
+        <div class="state-panel-placeholder">
+          Click any state on the map to see its fire and lightning timeline.
+        </div>
+      </aside>
+    </div>
+    <div class="tooltip" id="tooltip2"></div>
+  </section>
+
+  <!-- =========== SCENE 3 =========== -->
+  <section class="scene" id="scene3">
+    <h2>3. The verdict: how many fires had lightning nearby?</h2>
+    <p class="subtitle">
+      One dot per fire-cell-week. <span class="enc">X</span> = lightning flashes in same cell, prior 24h.
+      <span class="enc">Y</span> = total fire power. Brush the X-axis to filter by lightning level;
+      click a region button to color by region.
+    </p>
+    <div class="headline">
+      <span id="headline-num">&mdash;</span>
+      <span class="headline-text">of selected fire cells had <strong>no</strong> prior-day lightning</span>
+    </div>
+    <div class="scene3-controls">
+      <strong>Filter region:</strong>
+      <button data-region="All" class="region-btn active">All</button>
+      <button data-region="West" class="region-btn">West</button>
+      <button data-region="Mountain/Plains" class="region-btn">Mountain/Plains</button>
+      <button data-region="South-Central" class="region-btn">South-Central</button>
+      <button data-region="East" class="region-btn">East</button>
+    </div>
+    <div id="scatter" class="scatter"></div>
+    <div id="region-bars" class="bars"></div>
+  </section>
+
+  <footer>
+    <p>
+      Data: GOES-16 ABI-L2-FDCC (fires) and GOES-16 GLM-L2-LCFA (lightning), aggregated to 0.5&deg; cells and weekly bins.
+      U.S. state outlines from <code>us-atlas</code>.
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script src="script.js"></script>
+</body>
+</html>
