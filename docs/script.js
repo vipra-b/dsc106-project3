@@ -40,7 +40,7 @@ const STAGES = {
   },
   3: {
     title: "Fires aggregated by state",
-    caption: "Same data, summarized: each state colored by total fire radiative power for the season. The pattern hardens — fires concentrate in the Mountain West and a corridor through Texas and the Plains.",
+    caption: "Same data, summarized: each state colored by total fire radiative power for the season. The pattern hardens. Fires concentrate in the Mountain West and a corridor through Texas and the Plains.",
     showPanel: true,
     panelDelay: 750,         // wait for map fade-in to complete, then bring panel in
     render: renderStage3,
@@ -49,7 +49,7 @@ const STAGES = {
   },
   4: {
     title: "Now overlay the lightning",
-    caption: "Each state is now colored on two axes — fire activity (vertical) and lightning activity (horizontal). The myth-buster reveals itself: the bright-red Western states aren't where the lightning is. Florida and the Gulf get the most lightning but barely burn. Click any state for a weekly breakdown.",
+    caption: "Each state is now colored on two axes: fire activity vertically, lightning activity horizontally. The myth-buster reveals itself: the bright-red Western states aren't where the lightning is. Florida and the Gulf get the most lightning but barely burn. Click any state for a weekly breakdown.",
     showPanel: true,
     panelDelay: 0,           // panel already visible from stage 3
     render: renderStage4,
@@ -486,13 +486,13 @@ function bindStateInteractions(paths, tip, { showLightning }) {
     .on("mousemove", function(event, d) {
       const s = stateTotals.get(d.id);
       const lightLine = showLightning
-        ? `Lightning: ${s.light ? s.light.toLocaleString() + " flashes" : "—"}<br>`
+        ? `Lightning: ${s.light ? s.light.toLocaleString() + " flashes" : "none"}<br>`
         : "";
       tip.style("display", "block")
         .style("left", (event.pageX + 14) + "px")
         .style("top", (event.pageY + 14) + "px")
         .html(`<strong>${s.name}</strong><br>
-               Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "—"}<br>
+               Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "none"}<br>
                ${lightLine}<em>click to see timeline</em>`);
       paths.attr("stroke-width", x => x.id === d.id ? 2 : 0.6)
            .attr("stroke", x => x.id === d.id ? "#1a1a1a" : "#b8b2a4");
@@ -519,11 +519,11 @@ function renderStatePanel(stateId, totals, { showLightning }) {
   const rows = panel.append("div");
   rows.append("div").attr("class", "stat-row")
     .html(`<span class="stat-label">Total fire radiative power</span>
-           <span class="stat-val fire">${totals.fire ? totals.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "—"}</span>`);
+           <span class="stat-val fire">${totals.fire ? totals.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "none"}</span>`);
   if (showLightning) {
     rows.append("div").attr("class", "stat-row")
       .html(`<span class="stat-label">Total lightning flashes</span>
-             <span class="stat-val light">${totals.light ? totals.light.toLocaleString() : "—"}</span>`);
+             <span class="stat-val light">${totals.light ? totals.light.toLocaleString() : "none"}</span>`);
   }
   rows.append("div").attr("class", "stat-row")
     .html(`<span class="stat-label">Fire cells observed</span>
@@ -581,7 +581,7 @@ function renderStatePanel(stateId, totals, { showLightning }) {
   } else if (pctNoPrior >= 70) {
     verdict = `Of ${totals.fireCount} fire cells in ${totals.name}, only ${totals.priorCount} had lightning within 24 hours before. <strong>${pctNoPrior}% had no lightning preceding them.</strong>`;
   } else {
-    verdict = `Of ${totals.fireCount} fire cells in ${totals.name}, ${totals.priorCount} had prior-day lightning — ${100 - pctNoPrior}% had a lightning antecedent.`;
+    verdict = `Of ${totals.fireCount} fire cells in ${totals.name}, ${totals.priorCount} had prior-day lightning. That is ${100 - pctNoPrior}% had a lightning antecedent.`;
   }
   panel.append("div").attr("class", "panel-verdict").html(verdict);
 }
@@ -592,7 +592,7 @@ function renderStatePanel(stateId, totals, { showLightning }) {
 function stage5Controls() {
   return `
     <div class="headline" style="margin-right:24px">
-      <span id="headline-num">—</span>
+      <span id="headline-num">0%</span>
       <span class="headline-text">of <span id="headline-scope">all fire cells</span> had <strong>no</strong> prior-day lightning</span>
     </div>
     <div>
