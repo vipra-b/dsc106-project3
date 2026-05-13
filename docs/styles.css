@@ -122,11 +122,11 @@ header h1 {
 }
 .graphic-inner {
   width: 100%;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
 }
 .scrolly-text {
   display: flex;
@@ -213,10 +213,11 @@ header h1 {
 .viz-area.fullwidth .map { height: 440px; }
 
 .state-panel {
-  background: var(--paper-2);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 10px 11px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 10px 11px 10px 16px;
   min-height: 420px;
   font-size: 11.5px;
   font-family: Georgia, serif;
