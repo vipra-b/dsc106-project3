@@ -1,7 +1,7 @@
 // Lightning vs. Fire — DSC106 Project 3 (narrative stage flow)
 // Pure D3 v7 + topojson-client.
 
-const TOTAL_STAGES = 5;
+const TOTAL_STAGES = 6;
 let currentStage = 1;
 
 // Shared data (set in main)
@@ -19,6 +19,20 @@ const BIVARIATE = [
   ["#d8d4c5", "#a8c4cf", "#3f97a5"], // fire low
   ["#cfa39c", "#9c9aa7", "#3f7080"], // fire mid
   ["#b8453a", "#7a3a5e", "#2c2e58"], // fire high
+];
+
+// VPD weekly averages (kPa) derived from vpd_2024_fire_season_daily.csv
+// Keyed to same week strings as fires_weekly_2024.csv
+const VPD_WEEKLY = {"2024-05-27":1.1989,"2024-06-03":1.3776,"2024-06-10":1.4668,"2024-06-17":1.3398,"2024-06-24":1.4859,"2024-07-01":1.4983,"2024-07-08":1.8138,"2024-07-15":1.5749,"2024-07-22":1.5294,"2024-07-29":1.708,"2024-08-05":1.4306,"2024-08-12":1.4145,"2024-08-19":1.4358,"2024-08-26":1.4666,"2024-09-02":1.4265,"2024-09-09":1.3874,"2024-09-16":1.1257,"2024-09-23":1.2991,"2024-09-30":1.3542,"2024-10-07":1.3568,"2024-10-14":0.9147,"2024-10-21":0.9798,"2024-10-28":0.7051};
+
+// Bivariate palette: fire (rows, low→high) × VPD (cols, low→high)
+// Low-VPD / high-fire = muted red (fire without drought driver — agricultural/human)
+// High-VPD / high-fire = deep crimson (classic drought-driven wildfire)
+// High-VPD / low-fire = amber (dry air but not yet burning)
+const BIVARIATE_VPD = [
+  ["#d8d4c5", "#e8c97a", "#c9a23a"], // fire low:  cream → amber
+  ["#cfa39c", "#c4855a", "#b86030"], // fire mid:  salmon → burnt orange
+  ["#b8453a", "#912533", "#5c0d1e"], // fire high: red → deep crimson
 ];
 
 const STAGES = {
@@ -62,6 +76,15 @@ const STAGES = {
     showPanel: false,
     render: renderStage5,
     controls: stage5Controls,
+    nextHint: "A new factor enters the picture →",
+  },
+  6: {
+    title: "Does atmospheric dryness explain what lightning doesn't?",
+    caption: "Each state is now colored on two axes: fire activity vertically, Vapor Pressure Deficit (VPD) horizontally. VPD measures how thirsty the atmosphere is — high VPD pulls moisture out of vegetation, priming fuels for burning. The Western states that burned hardest also sit in the high-VPD column. Drag the week slider to watch both the fire circles and the VPD dryness pulse through the season.",
+    showPanel: true,
+    panelDelay: 0,
+    render: renderStage6,
+    controls: stage6Controls,
     nextHint: "",
   },
 };
@@ -104,6 +127,7 @@ const STAGES = {
   weeks = Array.from(new Set(fires.map(d => d.week))).sort();
   stateFC = topojson.feature(usTopo, usTopo.objects.states);
   precomputeStateData();
+  precomputeVpdData();
 
   buildStageDots();
 
@@ -267,6 +291,35 @@ function precomputeStateData() {
 
 function binFire(v) { return v <= fireBreaks[0] ? 0 : v <= fireBreaks[1] ? 1 : 2; }
 function binLight(v) { return v <= lightBreaks[0] ? 0 : v <= lightBreaks[1] ? 1 : 2; }
+
+// VPD helpers — season average per state is estimated by weighting each week's
+// VPD by that state's total fire power that week, giving a fire-intensity-weighted
+// atmospheric dryness signal. For states with no fire, we use the national
+// weekly average VPD across all weeks.
+let stateVpdWeighted; // Map: stateId → fire-weighted mean VPD
+let vpdBreaks;        // [p33, p66] thresholds across active states
+
+function precomputeVpdData() {
+  const vpdWeeks = Object.keys(VPD_WEEKLY);
+  const nationalAvgVpd = vpdWeeks.reduce((s, w) => s + VPD_WEEKLY[w], 0) / vpdWeeks.length;
+
+  stateVpdWeighted = new Map();
+  for (const f of stateFC.features) {
+    let totalWeight = 0, weightedVpd = 0;
+    for (const w of vpdWeeks) {
+      const statePower = firePerWeekState.get(`${w}_${f.id}`) || 0;
+      weightedVpd += statePower * (VPD_WEEKLY[w] || nationalAvgVpd);
+      totalWeight += statePower;
+    }
+    stateVpdWeighted.set(f.id, totalWeight > 0 ? weightedVpd / totalWeight : nationalAvgVpd);
+  }
+
+  const activeVpds = [...stateVpdWeighted.values()].sort(d3.ascending);
+  vpdBreaks = [d3.quantile(activeVpds, 0.33), d3.quantile(activeVpds, 0.66)];
+}
+
+function binVpd(v) { return v <= vpdBreaks[0] ? 0 : v <= vpdBreaks[1] ? 1 : 2; }
+
 
 // ============================================================
 // SHARED HELPERS
@@ -784,4 +837,228 @@ function renderStage5() {
   });
 
   draw();
+}
+
+// ============================================================
+// STAGE 6 — Bivariate fire × VPD choropleth + fire circles with VPD slider
+// ============================================================
+function stage6Controls() {
+  const vpdWeeks = Object.keys(VPD_WEEKLY).sort();
+  return `
+    <label for="vpd-week-slider" style="display:flex;align-items:center;gap:10px;">
+      <span>Week: <strong id="vpd-week-label">${vpdWeeks[0]}</strong></span>
+      <span style="margin-left:auto;font-size:12px;">VPD: <strong id="vpd-val-label">—</strong> kPa</span>
+    </label>
+    <input type="range" id="vpd-week-slider" min="0" max="${vpdWeeks.length - 1}" value="${vpdWeeks.length - 1}" step="1">
+    <div style="font-size:11px;color:#888;margin-top:4px;">
+      Slider animates the fire circles by week. Map colors reflect each state's fire-weighted seasonal VPD.
+    </div>
+  `;
+}
+
+function renderStage6() {
+  clearViz();
+  const { svg, projection, path } = buildMap(720, 460);
+  const tip = d3.select("#tooltip");
+  const noDataColor = "#fbfaf7";
+
+  // --- State bivariate choropleth (fire × VPD) ---
+  function bivariateVpd(stateId) {
+    const s = stateTotals.get(stateId);
+    if (!s || (s.fire === 0)) return noDataColor;
+    const vpd = stateVpdWeighted.get(stateId) || 0;
+    return BIVARIATE_VPD[binFire(s.fire)][binVpd(vpd)];
+  }
+
+  const statePaths = svg.append("g").selectAll("path")
+    .data(stateFC.features).enter()
+    .append("path").attr("d", path)
+    .attr("fill", noDataColor)
+    .attr("stroke", "#1f1f1f").attr("stroke-width", 1.8)
+    .style("cursor", "pointer");
+
+  // Bind interactions — show VPD in panel
+  statePaths
+    .on("mousemove", function(event, d) {
+      const s = stateTotals.get(d.id);
+      const vpd = stateVpdWeighted.get(d.id);
+      tip.style("display", "block")
+        .style("left", (event.pageX + 14) + "px")
+        .style("top",  (event.pageY + 14) + "px")
+        .html(`<strong>${s.name}</strong><br>
+               Fire power: ${s.fire ? s.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "none"}<br>
+               Seasonal VPD (fire-weighted): ${vpd ? vpd.toFixed(2) + " kPa" : "—"}<br>
+               <em>click for weekly timeline</em>`);
+      statePaths.attr("stroke-width", x => x.id === d.id ? 3.2 : 1.8)
+                .attr("stroke",       x => x.id === d.id ? "#b8453a" : "#1f1f1f");
+    })
+    .on("mouseleave", function() {
+      tip.style("display", "none");
+      statePaths.attr("stroke-width", 1.8).attr("stroke", "#1f1f1f");
+    })
+    .on("click", function(event, d) {
+      renderStatePanelVpd(d.id, stateTotals.get(d.id));
+      statePaths.attr("stroke-width", x => x.id === d.id ? 3.2 : 1.8)
+                .attr("stroke",       x => x.id === d.id ? "#b8453a" : "#1f1f1f");
+    });
+
+  statePaths.transition()
+    .delay((d, i) => i * 12)
+    .duration(700)
+    .attr("fill", d => bivariateVpd(d.id));
+
+  // --- Bivariate legend ---
+  const legendG = svg.append("g").attr("class", "legend-group").style("opacity", 0);
+  drawVpdLegend(legendG);
+  legendG.transition().delay(700).duration(450).style("opacity", 1);
+
+  // --- Fire circles layer (same mechanic as Stage 1, driven by VPD slider) ---
+  const vpdWeeks = Object.keys(VPD_WEEKLY).sort();
+  const circleLayer = svg.append("g");
+
+  const projFires = fires.map(d => {
+    if (findStateForCell(d) === null) return null;
+    const p = projection([d.lon, d.lat]);
+    return p ? { ...d, _x: p[0], _y: p[1] } : null;
+  }).filter(Boolean);
+
+  const sizeScale  = d3.scaleSqrt()
+    .domain([1, d3.max(projFires, d => d.power) || 1])
+    .range([2, 12]);
+  const colorScale = d3.scaleSequential(d3.interpolateOrRd)
+    .domain([0, d3.max(projFires, d => d.maxPower) || 1]);
+
+  function drawCircles(weekIdx) {
+    const w = vpdWeeks[weekIdx];
+    const vpd = VPD_WEEKLY[w];
+    document.getElementById("vpd-week-label").textContent = w;
+    document.getElementById("vpd-val-label").textContent = vpd ? vpd.toFixed(2) : "—";
+
+    const wkData = projFires.filter(d => d.week === w);
+    const sel = circleLayer.selectAll("circle")
+      .data(wkData, d => `${d.lat},${d.lon}`);
+
+    sel.enter().append("circle")
+      .attr("stroke", "#1a1a1a").attr("stroke-opacity", 0.35)
+      .attr("fill-opacity", 0)
+      .attr("r", 0)
+      .merge(sel)
+      .attr("cx", d => d._x).attr("cy", d => d._y)
+      .attr("fill", d => colorScale(d.maxPower))
+      .transition().duration(200)
+      .attr("r", d => sizeScale(d.power))
+      .attr("fill-opacity", 0.85);
+
+    sel.exit().transition().duration(150).attr("r", 0).remove();
+  }
+
+  const slider = document.getElementById("vpd-week-slider");
+  slider.addEventListener("input", () => drawCircles(+slider.value));
+  // Default to peak VPD week (index 6 = July 8)
+  slider.value = 6;
+  drawCircles(6);
+}
+
+function drawVpdLegend(g) {
+  const size = 22;
+  const left = 10, top = 300;
+  g.append("rect").attr("x", left - 4).attr("y", top - 22)
+    .attr("width", 148).attr("height", 120)
+    .attr("fill", "rgba(251,250,247,0.96)")
+    .attr("stroke", "#1f1f1f");
+  g.append("text").attr("x", left + 30).attr("y", top - 6).attr("fill", "#6b6b6b")
+    .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
+    .text("VPD (dryness) →");
+  g.append("text").attr("x", left + 8).attr("y", top + 50)
+    .attr("fill", "#6b6b6b").attr("transform", `rotate(-90, ${left + 8}, ${top + 50})`)
+    .style("font-size", "10px").style("text-transform", "uppercase").style("letter-spacing", "1px")
+    .text("Fire →");
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      g.append("rect")
+        .attr("x", left + 26 + col * size).attr("y", top + (2 - row) * size)
+        .attr("width", size).attr("height", size)
+        .attr("fill", BIVARIATE_VPD[row][col])
+        .attr("stroke", "#fbfaf7").attr("stroke-width", 1);
+    }
+  }
+  // Corner labels
+  g.append("text").attr("x", left + 26).attr("y", top + 3 * size + 12)
+    .style("font-size", "9px").attr("fill", "#888").text("low VPD");
+  g.append("text").attr("x", left + 26 + 2 * size).attr("y", top + 3 * size + 12)
+    .style("font-size", "9px").attr("fill", "#888").attr("text-anchor", "end").text("high VPD");
+}
+
+function renderStatePanelVpd(stateId, totals) {
+  const panel = d3.select("#state-panel");
+  panel.selectAll("*").remove();
+  const vpd = stateVpdWeighted.get(stateId);
+
+  panel.append("h3").text(totals.name);
+  panel.append("div").attr("class", "panel-sub").text("June–October 2024");
+  const rows = panel.append("div");
+
+  rows.append("div").attr("class", "stat-row")
+    .html(`<span class="stat-label">Total fire radiative power</span>
+           <span class="stat-val fire">${totals.fire ? totals.fire.toLocaleString(undefined, {maximumFractionDigits:0}) + " MW" : "none"}</span>`);
+  rows.append("div").attr("class", "stat-row")
+    .html(`<span class="stat-label">Fire-weighted seasonal VPD</span>
+           <span class="stat-val" style="color:#c9a23a">${vpd ? vpd.toFixed(3) + " kPa" : "—"}</span>`);
+  rows.append("div").attr("class", "stat-row")
+    .html(`<span class="stat-label">Fire cells observed</span>
+           <span class="stat-val">${totals.fireCount.toLocaleString()}</span>`);
+
+  // Weekly dual-axis chart: fire bars + VPD line
+  const W = 280, H = 140, M = { top: 10, right: 16, bottom: 22, left: 34 };
+  const chart = panel.append("div").attr("class", "panel-chart")
+    .append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+    .style("width", "100%").style("height", H + "px");
+
+  const series = weeks.map(w => ({
+    week: w,
+    fire: firePerWeekState.get(`${w}_${stateId}`) || 0,
+    vpd: VPD_WEEKLY[w] || null,
+  }));
+
+  const x = d3.scaleBand().domain(weeks).range([M.left, W - M.right]).padding(0.1);
+  const yFire = d3.scaleLinear()
+    .domain([0, d3.max(series, d => d.fire) || 1]).range([H - M.bottom, M.top]);
+  const yVpd = d3.scaleLinear()
+    .domain([0.5, 2.0]).range([H - M.bottom, M.top]);
+
+  // Fire bars
+  chart.append("g").selectAll("rect").data(series).enter().append("rect")
+    .attr("x", d => x(d.week))
+    .attr("y", d => yFire(d.fire))
+    .attr("width", x.bandwidth())
+    .attr("height", d => H - M.bottom - yFire(d.fire))
+    .attr("fill", "#e0532a").attr("fill-opacity", 0.85);
+
+  // VPD line
+  const vpdLine = d3.line()
+    .defined(d => d.vpd !== null)
+    .x(d => x(d.week) + x.bandwidth() / 2)
+    .y(d => yVpd(d.vpd))
+    .curve(d3.curveMonotoneX);
+
+  chart.append("path").datum(series).attr("d", vpdLine)
+    .attr("fill", "none").attr("stroke", "#c9a23a").attr("stroke-width", 2);
+
+  const tickWeeks = [weeks[0], weeks[Math.floor(weeks.length / 2)], weeks[weeks.length - 1]];
+  chart.append("g").attr("class", "axis")
+    .attr("transform", `translate(0,${H - M.bottom})`)
+    .call(d3.axisBottom(x).tickValues(tickWeeks).tickFormat(d => d.slice(5)));
+
+  panel.append("div").attr("class", "panel-sub")
+    .style("text-align", "center").style("margin-top", "0")
+    .html(`<span style="color:#e0532a">■</span> fire MW &nbsp; <span style="color:#c9a23a">━</span> VPD kPa`);
+
+  let verdict;
+  if (totals.fireCount === 0) {
+    verdict = "No fires were detected here in 2024.";
+  } else {
+    const vpdRank = vpd >= vpdBreaks[1] ? "high" : vpd >= vpdBreaks[0] ? "moderate" : "low";
+    verdict = `${totals.name} had a fire-weighted seasonal VPD of <strong>${vpd ? vpd.toFixed(2) : "—"} kPa</strong> — ${vpdRank} relative to other states. ${vpdRank === "high" ? "Dry atmospheric conditions here aligned strongly with elevated fire activity." : vpdRank === "moderate" ? "Atmospheric dryness played a partial role alongside other ignition factors." : "Fire here occurred despite lower atmospheric dryness — other ignition factors dominated."}`;
+  }
+  panel.append("div").attr("class", "panel-verdict").html(verdict);
 }
